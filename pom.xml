@@ -68,6 +68,11 @@
 			<artifactId>opencsv</artifactId>
 			<version>5.6</version> <!-- Asegúrate de utilizar la última versión disponible -->
 		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.9.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
