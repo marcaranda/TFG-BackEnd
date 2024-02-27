@@ -10,6 +10,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepo extends CrudRepository<UserEntity, Long> {
-    @Query("SELECT u FROM UserEntity u WHERE u.deleted = false AND c.user_id = :user_id")
+    @Query("SELECT u FROM UserEntity u WHERE u.deleted = false AND u.user_id = :user_id")
     public abstract Optional<UserEntity> findById(@Param("user_id") Long user_id);
 }
