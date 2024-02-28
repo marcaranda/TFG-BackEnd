@@ -20,6 +20,15 @@ public class UserService {
     @Autowired
     UserRepo userRepo;
 
+    /*
+    if(new TokenValidator().validate_id_with_token(user_id)) {
+     --------
+    }
+    else {
+        throw new OurException("El user_id enviado es diferente al especificado en el token");
+    }
+     */
+
     //region Get Methods
     public ArrayList<UserModel> getUsers() throws Exception {
         ModelMapper modelMapper = new ModelMapper();
