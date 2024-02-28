@@ -18,6 +18,8 @@ public class UserEntity {
     private String password;
     @Column (nullable = false, columnDefinition = "boolean default false" )
     private boolean deleted;
+    @Column (unique = true)
+    private String phone;
     //endregion
 
     //region Getters & Setters
@@ -59,6 +61,14 @@ public class UserEntity {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
     //endregion
 }

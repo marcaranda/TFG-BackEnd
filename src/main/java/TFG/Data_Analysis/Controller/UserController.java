@@ -35,7 +35,7 @@ public class UserController {
     //endregion
 
     //region Post Methods
-    @PostMapping
+    @PostMapping(path = "/register")
     public UserDto saveUser(@RequestBody UserDto user) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
         return modelMapper.map(userService.saveUser(modelMapper.map(user, UserModel.class)), UserDto.class);

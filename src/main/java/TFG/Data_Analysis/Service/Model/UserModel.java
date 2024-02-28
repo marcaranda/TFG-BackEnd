@@ -9,6 +9,7 @@ public class UserModel {
     private String email;
     private String password;
     private boolean deleted;
+    private String phone;
     //endregion
 
     //region Getters & Setters
@@ -50,6 +51,14 @@ public class UserModel {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
     //endregion
 }
