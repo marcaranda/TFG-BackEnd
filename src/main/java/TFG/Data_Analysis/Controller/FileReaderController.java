@@ -13,7 +13,7 @@ public class FileReaderController {
     FileReaderService fileReaderService;
 
     @PostMapping
-    public void fileReaderCSV(@RequestBody String path) throws IOException {
-        fileReaderService.fileReader(path);
+    public double fileReaderCSV(@RequestBody String path) throws IOException {
+        return fileReaderService.fileReader(path);
     }
 }
