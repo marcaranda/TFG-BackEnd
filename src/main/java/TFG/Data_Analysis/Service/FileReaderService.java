@@ -73,7 +73,6 @@ public class FileReaderService {
         double eigenEntropy = 0.0;
         for (double lambda: eigenValues) {
             if (lambda > 0) eigenEntropy -= lambda * Math.log(lambda);
-            System.out.println(lambda + " - " + lambda * Math.log(lambda));
         }
         return eigenEntropy;
     }
