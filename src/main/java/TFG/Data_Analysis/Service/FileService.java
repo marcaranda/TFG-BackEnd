@@ -1,5 +1,6 @@
 package TFG.Data_Analysis.Service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -8,50 +9,82 @@ import org.apache.commons.math3.linear.EigenDecomposition;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
-public class FileReaderService {
-    private Map<Integer, Map<String, Double>> dataset;
+public class FileService {
+    private Map<Integer, Map<String, Double>> dataset = new HashMap<>();
+    private Map<Integer, Map<Integer, Map<String, Double>>> versions = new HashMap<>();
+    private int version = 0;
 
     public double fileReader(String path) throws IOException {
-        dataset = new HashMap<>();
-
         try (Reader reader = Files.newBufferedReader(Paths.get(path));
             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
             Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
             int numRow = 1;
             for (CSVRecord csvRecord : csvParser) {
-                Map<String, Double> row = new HashMap<>();
-                boolean firstColumn = true;
+                Map<String, Double> row = new LinkedHashMap<>();
 
                 for (String columnName : headerMap.keySet()) {
-                    if (!firstColumn) {
-                        Double columnValue = Double.valueOf(csvRecord.get(columnName));
-                        // Procesar los datos como se requiera
-                        row.put(columnName, columnValue);
-                    }
-                    else firstColumn = false;
+                    Double columnValue = Double.valueOf(csvRecord.get(columnName));
+                    // Procesar los datos como se requiera
+                    row.put(columnName, columnValue);
                 }
                 dataset.put(numRow, row);
                 ++numRow;
             }
         }
 
+        versions.put(version, dataset);
+        ++version;
+
         return calculateEigenEntropy(dataset);
+    }
+
+    public void downloadFile(Integer downloadVersion, HttpServletResponse response) throws Exception {
+        if (!versions.containsKey(downloadVersion)) {
+            throw new Exception("La versión solicitada no existe.");
+        }
+
+        String fileName = downloadVersion == 0 ? "Dataset.csv" : "Dataset_" + downloadVersion + ".csv";
+        // Configurar la respuesta para descargar el archivo
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+        Map<Integer, Map<String, Double>> downloadDataset = versions.get(downloadVersion);
+
+        try (PrintWriter csvWriter = response.getWriter()) {
+            // Escribir encabezados de columnas
+            Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue();
+            for (String columnName : firstRow.keySet()) {
+                csvWriter.append(columnName);
+                csvWriter.append(",");
+            }
+            csvWriter.append("\n");
+
+            // Escribir datos
+            for (Map<String, Double> rowData : downloadDataset.values()) {
+                for (Double value : rowData.values()) {
+                    csvWriter.append(String.valueOf(value));
+                    csvWriter.append(",");
+                }
+                csvWriter.append("\n");
+            }
+
+            csvWriter.flush();
+        }
     }
 
     public double applyFilter(List<String> filter) {
         Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
         int numRow = 1;
         for (Map<String, Double> entry : dataset.values()) {
-            Map<String, Double> row = new HashMap<>();
+            Map<String, Double> row = new LinkedHashMap<>();
             for (String columnName : filter) {
                 Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
                 row.put(columnName, columnValue);
@@ -59,6 +92,9 @@ public class FileReaderService {
             newDataset.put(numRow, row);
             numRow++;
         }
+
+        versions.put(version, newDataset);
+        ++version;
 
         return calculateEigenEntropy(newDataset);
     }
@@ -91,15 +127,20 @@ public class FileReaderService {
         int row = 0;
         for (Map.Entry<Integer, Map<String, Double>> entry : dataset.entrySet()) {
             Map<String, Double> values = entry.getValue();
+            boolean firstColumn = true;
             int column = 0;
             for (Double value : values.values()) {
-                if (value != null) {
-                    dataMatrix[row][column] = value;
+                if (!firstColumn) {
+                    if (value != null) {
+                        dataMatrix[row][column] = value;
+                    } else {
+                        dataMatrix[row][column] = 0.0;
+                    }
+                    ++column;
                 }
                 else {
-                    dataMatrix[row][column] = 0.0;
+                    firstColumn = false;
                 }
-                ++column;
             }
             ++row;
         }
