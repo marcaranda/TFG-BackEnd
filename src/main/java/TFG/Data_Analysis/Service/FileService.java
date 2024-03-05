@@ -1,11 +1,15 @@
 package TFG.Data_Analysis.Service;
 
+import Jama.EigenvalueDecomposition;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.EigenDecomposition;
+import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
+import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
+import org.ejml.simple.SimpleMatrix;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,8 +22,8 @@ import java.util.*;
 @Service
 public class FileService {
     private Map<Integer, Map<String, Double>> dataset = new HashMap<>();
-    private Map<Integer, Map<Integer, Map<String, Double>>> versions = new HashMap<>();
-    private int version = 0;
+    private Map<Integer, Map<Integer, Map<String, Double>>> versions;
+    private int version;
 
     public double fileReader(String path) throws IOException {
         try (Reader reader = Files.newBufferedReader(Paths.get(path));
@@ -31,7 +35,8 @@ public class FileService {
                 Map<String, Double> row = new LinkedHashMap<>();
 
                 for (String columnName : headerMap.keySet()) {
-                    Double columnValue = Double.valueOf(csvRecord.get(columnName));
+                    String columnValueString = csvRecord.get(columnName);
+                    Double columnValue = Double.valueOf(columnValueString.replaceAll("[^0-9]", ""));
                     // Procesar los datos como se requiera
                     row.put(columnName, columnValue);
                 }
@@ -39,6 +44,9 @@ public class FileService {
                 ++numRow;
             }
         }
+
+        versions = new HashMap<>();
+        version = 0;
 
         versions.put(version, dataset);
         ++version;
@@ -99,15 +107,39 @@ public class FileService {
         return calculateEigenEntropy(newDataset);
     }
 
-    public double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
+    /*public double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
         double[][] dataMatrix = convertToMatrix(dataset);
         Array2DRowRealMatrix realMatrix = new Array2DRowRealMatrix(dataMatrix);
         EigenDecomposition eigenDecomposition = new EigenDecomposition(realMatrix);
         double[] eigenValues = eigenDecomposition.getRealEigenvalues();
 
+
         double eigenEntropy = 0.0;
         for (double lambda: eigenValues) {
             if (lambda > 0) eigenEntropy -= lambda * Math.log(lambda);
+        }
+        return eigenEntropy;
+    }*/
+
+    public double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
+        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
+        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
+        eigDecomp.decompose(dataMatrix.getMatrix());
+
+        double sum = 0;
+        for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
+            double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
+            sum += eigenvalue;
+        }
+
+        // Calcular entropía de Shannon para los valores propios normalizados
+        double eigenEntropy = 0;
+        for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
+            double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
+            double p = eigenvalue / sum;
+            if (p > 0) {
+                eigenEntropy -= p * Math.log(p);
+            }
         }
         return eigenEntropy;
     }
@@ -116,12 +148,12 @@ public class FileService {
         int numRows = dataset.size();
         int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size();
 
-        Double[][] dataMatrix;
+        double[][] dataMatrix;
         if (numRows > numColumns) {
-            dataMatrix = new Double[numRows][numRows];
+            dataMatrix = new double[numRows][numRows];
         }
         else {
-            dataMatrix = new Double[numColumns][numColumns];
+            dataMatrix = new double[numColumns][numColumns];
         }
 
         int row = 0;
@@ -145,18 +177,6 @@ public class FileService {
             ++row;
         }
 
-        double[][] finalDataMatrix = new double[dataMatrix.length][dataMatrix.length];
-        for (int i = 0; i < numRows; i++) {
-            for (int j = 0; j < numColumns; j++) {
-                if (dataMatrix[i][j] == null) {
-                    finalDataMatrix[i][j] = 0; // Establecer cualquier valor nulo como 0
-                }
-                else {
-                    finalDataMatrix[i][j] = dataMatrix[i][j];
-                }
-            }
-        }
-
-        return finalDataMatrix;
+        return dataMatrix;
     }
 }
