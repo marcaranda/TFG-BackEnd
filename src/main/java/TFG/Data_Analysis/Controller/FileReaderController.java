@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/file")
@@ -15,5 +16,10 @@ public class FileReaderController {
     @PostMapping
     public double fileReaderCSV(@RequestBody String path) throws IOException {
         return fileReaderService.fileReader(path);
+    }
+
+    @PostMapping(path = "/filter")
+    public double applyFilter(@RequestBody List<String> filter) {
+        return fileReaderService.applyFilter(filter);
     }
 }

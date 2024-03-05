@@ -11,60 +11,59 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
 public class FileReaderService {
-    /*public void fileReader(String path) throws IOException {
-        Map<Integer, Map<String, Float>> dataset = new HashMap<>();
-        int numFila = 1;
-
-        try (Reader reader = Files.newBufferedReader(Paths.get(path));
-             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
-            Map<String, Integer> headerMap = csvParser.getHeaderMap();
-
-            for (CSVRecord csvRecord : csvParser) {
-                Map<String, Float> fila = new HashMap<>();
-                for (String columnName : headerMap.keySet()) {
-                    Float columnValue = Float.valueOf(csvRecord.get(columnName));
-                    // Procesar los datos como se requiera
-                    fila.put(columnName, columnValue);
-                }
-                dataset.put(numFila, fila);
-                ++numFila;
-            }
-        }
-    }*/
+    private Map<Integer, Map<String, Double>> dataset;
 
     public double fileReader(String path) throws IOException {
-        ArrayList<ArrayList<Double>> dataset = new ArrayList<>();
+        dataset = new HashMap<>();
 
         try (Reader reader = Files.newBufferedReader(Paths.get(path));
-             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
+            CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
             Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
+            int numRow = 1;
             for (CSVRecord csvRecord : csvParser) {
-                ArrayList<Double> fila = new ArrayList<>();
-                boolean primeraColumna = true;
+                Map<String, Double> row = new HashMap<>();
+                boolean firstColumn = true;
 
                 for (String columnName : headerMap.keySet()) {
-                    if (!primeraColumna) {
+                    if (!firstColumn) {
                         Double columnValue = Double.valueOf(csvRecord.get(columnName));
                         // Procesar los datos como se requiera
-                        fila.add(columnValue);
+                        row.put(columnName, columnValue);
                     }
-                    else primeraColumna = false;
+                    else firstColumn = false;
                 }
-                dataset.add(fila);
+                dataset.put(numRow, row);
+                ++numRow;
             }
         }
 
         return calculateEigenEntropy(dataset);
     }
 
-    public double calculateEigenEntropy(ArrayList<ArrayList<Double>> dataset) {
+    public double applyFilter(List<String> filter) {
+        Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
+        int numRow = 1;
+        for (Map<String, Double> entry : dataset.values()) {
+            Map<String, Double> row = new HashMap<>();
+            for (String columnName : filter) {
+                Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
+                row.put(columnName, columnValue);
+            }
+            newDataset.put(numRow, row);
+            numRow++;
+        }
+
+        return calculateEigenEntropy(newDataset);
+    }
+
+    public double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
         double[][] dataMatrix = convertToMatrix(dataset);
         Array2DRowRealMatrix realMatrix = new Array2DRowRealMatrix(dataMatrix);
         EigenDecomposition eigenDecomposition = new EigenDecomposition(realMatrix);
@@ -77,12 +76,46 @@ public class FileReaderService {
         return eigenEntropy;
     }
 
-    public double[][] convertToMatrix (ArrayList<ArrayList<Double>> dataset) {
-        double[][] dataMatrix = new double[dataset.size()][];
-        for (int i = 0; i < dataset.size(); ++i) {
-            ArrayList<Double> fila = dataset.get(i);
-            dataMatrix[i] = fila.stream().mapToDouble(Double::doubleValue).toArray();
+    public double[][] convertToMatrix (Map<Integer, Map<String, Double>> dataset) {
+        int numRows = dataset.size();
+        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size();
+
+        Double[][] dataMatrix;
+        if (numRows > numColumns) {
+            dataMatrix = new Double[numRows][numRows];
         }
-        return dataMatrix;
+        else {
+            dataMatrix = new Double[numColumns][numColumns];
+        }
+
+        int row = 0;
+        for (Map.Entry<Integer, Map<String, Double>> entry : dataset.entrySet()) {
+            Map<String, Double> values = entry.getValue();
+            int column = 0;
+            for (Double value : values.values()) {
+                if (value != null) {
+                    dataMatrix[row][column] = value;
+                }
+                else {
+                    dataMatrix[row][column] = 0.0;
+                }
+                ++column;
+            }
+            ++row;
+        }
+
+        double[][] finalDataMatrix = new double[dataMatrix.length][dataMatrix.length];
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numColumns; j++) {
+                if (dataMatrix[i][j] == null) {
+                    finalDataMatrix[i][j] = 0; // Establecer cualquier valor nulo como 0
+                }
+                else {
+                    finalDataMatrix[i][j] = dataMatrix[i][j];
+                }
+            }
+        }
+
+        return finalDataMatrix;
     }
 }
