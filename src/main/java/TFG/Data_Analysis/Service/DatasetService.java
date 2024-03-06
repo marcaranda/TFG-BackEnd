@@ -30,7 +30,7 @@ public class DatasetService {
     @Autowired
     UserService userService;
     @Autowired
-    HistorialRepository historialRepository;
+    HistorialService historialService;
     private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
     public double fileReader(String path, long userId) throws IOException {
@@ -93,6 +93,20 @@ public class DatasetService {
 
             csvWriter.flush();
         }
+    }
+
+    public List<String> getHistorial (long userId) {
+        List<String> historial = new ArrayList<>();
+
+        for (Map.Entry<String, TreeMap<Integer, DatasetModel>> entry : versions.entrySet()) {
+            TreeMap<Integer, DatasetModel> innerMap = entry.getValue();
+            String datasetName = entry.getKey();
+
+            for (Map.Entry<Integer, DatasetModel> innerEntry : innerMap.entrySet()) {
+                historial.add(innerEntry.getKey() == 0 ? datasetName : datasetName + '_' + innerEntry.getKey());
+            }
+        }
+        return historial;
     }
 
     public double applyFilter(List<String> filter, long userId, String datasetName) {
@@ -261,7 +275,7 @@ public class DatasetService {
         versions.put(datasetName, datasetVersions);
 
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
-        historialRepository.save(new HistorialEntity(userId, versions));
+        historialService.saveDataset(userId, versions);
     }
 
     private long autoIncrementId() {
@@ -281,8 +295,7 @@ public class DatasetService {
     }
 
     public void chargeUserDatasets(String email) {
-        long userId = userService.getUserIdByEmail(email);
-        versions = historialRepository.findByUserId(userId).getVersions();
+        versions = historialService.chargeUserDatasets(email);
     }
 
     public void deleteDataset(long datasetId) {

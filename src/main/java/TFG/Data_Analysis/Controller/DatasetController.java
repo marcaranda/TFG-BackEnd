@@ -46,6 +46,11 @@ public class DatasetController {
         datasetService.downloadFile(datasetName, downloadVersion, response);
     }
 
+    @GetMapping(path = "/historial/{userId}")
+    public List<String> getHistorial(@PathVariable("userId") long userId) {
+        return datasetService.getHistorial(userId);
+    }
+
     /*@GetMapping(path = "/homogeneusSamples")
     public double homogeneusSamples(@RequestParam(value = "newRows") Integer newRows){
         return datasetService.homogeneusSamples(newRows);
