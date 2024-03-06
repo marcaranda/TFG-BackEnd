@@ -8,17 +8,21 @@ public class DatasetModel {
     private Map<Integer, Map<String, Double>> dataset;
     private double eigenEntropy;
     private long userId;
+    private String datasetName;
+    private long version;
     //endregion
 
     //region Constructor
     public DatasetModel() {
     }
 
-    public DatasetModel(long datasetId, Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId) {
+    public DatasetModel(long datasetId, Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId, String datasetName, long version) {
         this.datasetId = datasetId;
         this.dataset = dataset;
         this.eigenEntropy = eigenEntropy;
         this.userId = userId;
+        this.datasetName = datasetName;
+        this.version = version;
     }
     //endregion
 
@@ -53,6 +57,22 @@ public class DatasetModel {
 
     public void setUserId(long userId) {
         this.userId = userId;
+    }
+
+    public String getDatasetName() {
+        return datasetName;
+    }
+
+    public void setDatasetName(String datasetName) {
+        this.datasetName = datasetName;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
     //endregion
 }
