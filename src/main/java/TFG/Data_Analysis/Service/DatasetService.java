@@ -2,6 +2,8 @@ package TFG.Data_Analysis.Service;
 
 import TFG.Data_Analysis.Repository.DatasetRepo;
 import TFG.Data_Analysis.Repository.Entity.DatasetEntity;
+import TFG.Data_Analysis.Repository.Entity.HistorialEntity;
+import TFG.Data_Analysis.Repository.HistorialRepository;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.csv.CSVFormat;
@@ -25,11 +27,10 @@ import java.util.*;
 public class DatasetService {
     @Autowired
     DatasetRepo datasetRepo;
-    //private Map<Integer, Map<String, Double>> dataset = new HashMap<>();
-    //private Map<Integer, TreeMap<Integer, Map<String, Double>>> versions;
-    private int version;
-    private double eigenEntropy;
-
+    @Autowired
+    UserService userService;
+    @Autowired
+    HistorialRepository historialRepository;
     private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
     public double fileReader(String path, long userId) throws IOException {
@@ -124,7 +125,7 @@ public class DatasetService {
         }
 
         // Calcular entropía de Shannon para los valores propios normalizados
-        eigenEntropy = 0;
+        double eigenEntropy = 0;
         for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
             double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
             double p = eigenvalue / sum;
@@ -260,6 +261,7 @@ public class DatasetService {
         versions.put(datasetName, datasetVersions);
 
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
+        historialRepository.save(new HistorialEntity(userId, versions));
     }
 
     private long autoIncrementId() {
@@ -272,16 +274,15 @@ public class DatasetService {
                 userDatasets.stream().max(Comparator.comparing(DatasetModel::getDatasetId)).get().getDatasetId() + 1;
     }
 
-    public void chargeUserDatasets(long userId) {
-        List<DatasetModel> userDatasets = getUsersDatasets(userId);
+    public DatasetModel getDataset(String datasetName, Integer version) {
+        ModelMapper modelMapper = new ModelMapper();
+
+        return modelMapper.map(datasetRepo.findByDatasetNameAndVersion(datasetName, version), DatasetModel.class);
     }
 
-    private List<DatasetModel> getUsersDatasets (long userId) {
-        ModelMapper modelMapper = new ModelMapper();
-        List<DatasetModel> userDatasets = new ArrayList<>();
-
-        datasetRepo.findAllByUserId(userId).forEach(elementB -> userDatasets.add(modelMapper.map(elementB, DatasetModel.class)));
-        return userDatasets;
+    public void chargeUserDatasets(String email) {
+        long userId = userService.getUserIdByEmail(email);
+        versions = historialRepository.findByUserId(userId).getVersions();
     }
 
     public void deleteDataset(long datasetId) {
