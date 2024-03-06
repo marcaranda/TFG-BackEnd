@@ -1,6 +1,8 @@
 package TFG.Data_Analysis.Security;
 
 import TFG.Data_Analysis.Repository.UserRepo;
+import TFG.Data_Analysis.Service.DatasetService;
+import TFG.Data_Analysis.Service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +24,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @AllArgsConstructor
 public class WebSecurityConfig {
     @Autowired
-    private UserRepo user_repository;
+    private UserRepo userRepository;
+    @Autowired
+    private DatasetService datasetService;
 
     private final UserDetailsService userDetailsService;
     private final JWTAuthorizationFilter jwtAuthorizationFilter; //Authorization filter
@@ -31,7 +35,7 @@ public class WebSecurityConfig {
     Define también que solicitudes web estan excluidas de los filtros y que dirección es la que activa la función*/
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
-        JWTAuthenticationFilter filter = new JWTAuthenticationFilter(user_repository, authManager); //Authentication filter
+        JWTAuthenticationFilter filter = new JWTAuthenticationFilter(userRepository, datasetService, authManager); //Authentication filter
         //filter.setAuthenticationManager(authManager);
         filter.setFilterProcessesUrl("/user/login");
 

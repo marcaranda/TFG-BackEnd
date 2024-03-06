@@ -38,9 +38,13 @@ public class UserService {
         return users;
     }
 
-    public UserModel getUserId(Long userId) throws Exception {
+    public UserModel getUser(Long userId) {
         ModelMapper modelMapper = new ModelMapper();
         return modelMapper.map(userRepo.findById(userId), UserModel.class);
+    }
+
+    public long getUserIdByEmail(String email) {
+        return userRepo.findByEmail(email).getUser_id();
     }
     //endregion
 
@@ -70,7 +74,7 @@ public class UserService {
     public void deleteUser(Long userId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        UserModel user = getUserId(userId);
+        UserModel user = getUser(userId);
         if (user == null) {
             throw new Exception("Error al intentar eliminar el usuario. EL usuario no existe.");
         }

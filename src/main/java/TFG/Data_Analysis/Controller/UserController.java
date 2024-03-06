@@ -30,7 +30,7 @@ public class UserController {
     @GetMapping(path = "/userId/{userId}")
     public UserDto getUserId(@PathVariable("userId") Long userId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
-        return modelMapper.map(userService.getUserId(userId), UserDto.class);
+        return modelMapper.map(userService.getUser(userId), UserDto.class);
     }
     //endregion
 
