@@ -13,6 +13,8 @@ public class DatasetEntity {
     private Map<Integer, Map<String, Double>> dataset;
     private double eigenEntropy;
     private long userId;
+    private String datasetName;
+    private long version;
     //endregion
 
     //region Getters & Setters
@@ -46,6 +48,22 @@ public class DatasetEntity {
 
     public void setUserId(long userId) {
         this.userId = userId;
+    }
+
+    public String getDatasetName() {
+        return datasetName;
+    }
+
+    public void setDatasetName(String datasetName) {
+        this.datasetName = datasetName;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
     //endregion
 }

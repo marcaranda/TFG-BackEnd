@@ -25,17 +25,21 @@ import java.util.*;
 public class DatasetService {
     @Autowired
     DatasetRepo datasetRepo;
-    private Map<Integer, Map<String, Double>> dataset = new HashMap<>();
-    private Map<Integer, Map<Integer, Map<String, Double>>> versions;
+    //private Map<Integer, Map<String, Double>> dataset = new HashMap<>();
+    //private Map<Integer, TreeMap<Integer, Map<String, Double>>> versions;
     private int version;
     private double eigenEntropy;
 
-    public double fileReader(String path) throws IOException {
+    private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
+
+    public double fileReader(String path, long userId) throws IOException {
         try (Reader reader = Files.newBufferedReader(Paths.get(path));
             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
             Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
+            Map<Integer, Map<String, Double>> dataset = new HashMap<>();
             int numRow = 1;
+
             for (CSVRecord csvRecord : csvParser) {
                 Map<String, Double> row = new LinkedHashMap<>();
 
@@ -48,28 +52,25 @@ public class DatasetService {
                 dataset.put(numRow, row);
                 ++numRow;
             }
+
+            String datasetName = Paths.get(path).getFileName().toString();
+            datasetName = datasetName.replace(".csv", "");
+
+            return calculateEigenEntropy(dataset, userId, datasetName);
         }
-
-        versions = new HashMap<>();
-        version = 0;
-
-        versions.put(version, dataset);
-        ++version;
-
-        return calculateEigenEntropy(dataset);
     }
 
-    public void downloadFile(Integer downloadVersion, HttpServletResponse response) throws Exception {
-        if (!versions.containsKey(downloadVersion)) {
+    public void downloadFile(String datasetName, Integer downloadVersion, HttpServletResponse response) throws Exception {
+        if (!versions.get(datasetName).containsKey(downloadVersion)) {
             throw new Exception("La versión solicitada no existe.");
         }
 
-        String fileName = downloadVersion == 0 ? "Dataset.csv" : "Dataset_" + downloadVersion + ".csv";
+        String fileName = downloadVersion == 0 ? datasetName + ".csv" : datasetName + "_" + downloadVersion + ".csv";
         // Configurar la respuesta para descargar el archivo
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
-        Map<Integer, Map<String, Double>> downloadDataset = versions.get(downloadVersion);
+        Map<Integer, Map<String, Double>> downloadDataset = versions.get(datasetName).get(downloadVersion).getDataset();
 
         try (PrintWriter csvWriter = response.getWriter()) {
             // Escribir encabezados de columnas
@@ -93,10 +94,12 @@ public class DatasetService {
         }
     }
 
-    public double applyFilter(List<String> filter) {
+    public double applyFilter(List<String> filter, long userId, String datasetName) {
         Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
+        Map<Integer, Map<String, Double>> originalDataset = versions.get(datasetName).get(0).getDataset();
+
         int numRow = 1;
-        for (Map<String, Double> entry : dataset.values()) {
+        for (Map<String, Double> entry : originalDataset.values()) {
             Map<String, Double> row = new LinkedHashMap<>();
             for (String columnName : filter) {
                 Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
@@ -106,27 +109,10 @@ public class DatasetService {
             numRow++;
         }
 
-        versions.put(version, newDataset);
-        ++version;
-
-        return calculateEigenEntropy(newDataset);
+        return calculateEigenEntropy(newDataset, userId, datasetName);
     }
 
-    /*public double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
-        double[][] dataMatrix = convertToMatrix(dataset);
-        Array2DRowRealMatrix realMatrix = new Array2DRowRealMatrix(dataMatrix);
-        EigenDecomposition eigenDecomposition = new EigenDecomposition(realMatrix);
-        double[] eigenValues = eigenDecomposition.getRealEigenvalues();
-
-
-        double eigenEntropy = 0.0;
-        for (double lambda: eigenValues) {
-            if (lambda > 0) eigenEntropy -= lambda * Math.log(lambda);
-        }
-        return eigenEntropy;
-    }*/
-
-    private double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset) {
+    private double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset, long userId, String datasetName) {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
         eigDecomp.decompose(dataMatrix.getMatrix());
@@ -147,7 +133,7 @@ public class DatasetService {
             }
         }
 
-        saveDataset(dataset, eigenEntropy, 1); //Editar userId
+        saveDataset(dataset, eigenEntropy, userId, datasetName);
         return eigenEntropy;
     }
 
@@ -187,6 +173,7 @@ public class DatasetService {
         return dataMatrix;
     }
 
+    //region Sample
     /*public double homogeneusSamples(Integer newRows) {
         Map<Integer, Map<String, Double>> newDataset = dataset;
         int numRow = dataset.size() + 1;
@@ -250,13 +237,28 @@ public class DatasetService {
 
          return artificialRow;
     }*/
+    //endregion
 
     //region DataBase
-    private void saveDataset(Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId){
+    private void saveDataset(Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId, String datasetName){
         ModelMapper modelMapper = new ModelMapper();
 
         long datasetId = autoIncrementId();
-        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, eigenEntropy, userId);
+        TreeMap<Integer, DatasetModel> datasetVersions = versions.get(datasetName);
+        int version;
+        if (datasetVersions == null) {
+            datasetVersions = new TreeMap<>();
+            version = 0;
+        }
+        else {
+            version = datasetVersions.lastKey() + 1;
+        }
+
+        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, eigenEntropy, userId, datasetName, version);
+
+        datasetVersions.put(version, datasetModel);
+        versions.put(datasetName, datasetVersions);
+
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
     }
 

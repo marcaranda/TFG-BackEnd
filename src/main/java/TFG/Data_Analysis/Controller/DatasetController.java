@@ -16,24 +16,24 @@ public class DatasetController {
     DatasetService datasetService;
 
     //region Post Methods
-    @PostMapping
-    public double fileReaderCSV(@RequestBody String path) throws IOException {
-        return datasetService.fileReader(path);
+    @PostMapping(path = "/{userId}")
+    public double fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws IOException {
+        return datasetService.fileReader(path, userId);
     }
 
-    @PostMapping(path = "/filter")
-    public double applyFilter(@RequestBody List<String> filter) {
-        return datasetService.applyFilter(filter);
+    @PostMapping(path = "/filter/{userId}/{datasetName}")
+    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName) {
+        return datasetService.applyFilter(filter, userId, datasetName);
     }
     //endregion
 
     //region Get Methods
-    @GetMapping(path = "/download/{version}")
-    public void downloadFile(@PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
+    @GetMapping(path = "/{datasetName}/{version}")
+    public void downloadFile(@PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
         response.setContentType("text/csv");
         response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"example.csv\"");
 
-        datasetService.downloadFile(downloadVersion, response);
+        datasetService.downloadFile(datasetName, downloadVersion, response);
     }
 
     /*@GetMapping(path = "/homogeneusSamples")
