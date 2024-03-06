@@ -1,6 +1,6 @@
 package TFG.Data_Analysis.Controller;
 
-import TFG.Data_Analysis.Service.FileService;
+import TFG.Data_Analysis.Service.DatasetService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -11,19 +11,19 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/file")
-public class FileController {
+public class DatasetController {
     @Autowired
-    FileService fileReaderService;
+    DatasetService datasetService;
 
     //region Post Methods
     @PostMapping
     public double fileReaderCSV(@RequestBody String path) throws IOException {
-        return fileReaderService.fileReader(path);
+        return datasetService.fileReader(path);
     }
 
     @PostMapping(path = "/filter")
     public double applyFilter(@RequestBody List<String> filter) {
-        return fileReaderService.applyFilter(filter);
+        return datasetService.applyFilter(filter);
     }
     //endregion
 
@@ -33,7 +33,19 @@ public class FileController {
         response.setContentType("text/csv");
         response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"example.csv\"");
 
-        fileReaderService.downloadFile(downloadVersion, response);
+        datasetService.downloadFile(downloadVersion, response);
+    }
+
+    /*@GetMapping(path = "/homogeneusSamples")
+    public double homogeneusSamples(@RequestParam(value = "newRows") Integer newRows){
+        return datasetService.homogeneusSamples(newRows);
+    }*/
+    //endregion
+    
+    //region Delete Methods
+    @DeleteMapping(path = "/{datasetId}")
+    public void deleteDataset(@PathVariable("datasetId") Long datasetId) {
+        datasetService.deleteDataset(datasetId);
     }
     //endregion
 }
