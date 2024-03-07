@@ -17,15 +17,15 @@ public class TokenUtils {
     private final static Long ACCESS_TOKEN_EXPIRATION_TIME = 2_592_000L; // 30 days in seconds, change it in production to a less time
 
 
-    public static String generateAccessToken(Long user_id, String email) {
+    public static String generateAccessToken(Long userId, String email) {
         long expiration_time = ACCESS_TOKEN_EXPIRATION_TIME * 1_000;
         Date expiration_date = new Date(System.currentTimeMillis() + expiration_time);
 
         Map<String,Object> extra = new HashMap<>();
-        extra.put("id", user_id);
+        extra.put("id", userId);
 
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(String.valueOf(userId))
                 .setExpiration(expiration_date)
                 .addClaims(extra)
                 .signWith(Keys.hmacShaKeyFor(ACCES_TOKEN_SECRET.getBytes()))

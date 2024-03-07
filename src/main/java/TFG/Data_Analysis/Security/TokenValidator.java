@@ -10,6 +10,6 @@ public class TokenValidator {
      */
     public boolean validate_id_with_token(long user_id) {
         Object details = SecurityContextHolder.getContext().getAuthentication().getDetails();
-        return details instanceof UserDetailsAux user_details_aux && user_details_aux.getUser_id() == user_id;
+        return details instanceof UserDetailsAux user_details_aux && user_details_aux.getUserId() == user_id;
     }
 }
