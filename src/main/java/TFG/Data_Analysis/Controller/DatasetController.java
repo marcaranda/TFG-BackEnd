@@ -20,19 +20,19 @@ public class DatasetController {
 
     //region Post Methods
     @PostMapping(path = "userId/{userId}")
-    public double fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws IOException {
+    public double fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws Exception {
         return datasetService.fileReader(path, userId);
     }
 
     @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}")
-    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName) {
+    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName) throws Exception {
         return datasetService.applyFilter(filter, userId, datasetName);
     }
     //endregion
 
     //region Get Methods
     @GetMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public DatasetDto getDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) {
+    public DatasetDto getDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
         return modelMapper.map(datasetService.getDataset(userId, datasetName, version), DatasetDto.class);
@@ -47,7 +47,7 @@ public class DatasetController {
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
-    public List<String> getHistorial(@PathVariable("userId") long userId) {
+    public List<String> getHistorial(@PathVariable("userId") long userId) throws Exception {
         return datasetService.getHistorial(userId);
     }
 
@@ -59,7 +59,7 @@ public class DatasetController {
     
     //region Delete Methods
     @DeleteMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public void deleteDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) {
+    public void deleteDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
         datasetService.deleteDataset(userId, datasetName, version);
     }
     //endregion
