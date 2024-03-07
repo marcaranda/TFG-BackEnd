@@ -4,6 +4,7 @@ import TFG.Data_Analysis.Repository.DatasetRepo;
 import TFG.Data_Analysis.Repository.Entity.DatasetEntity;
 import TFG.Data_Analysis.Repository.Entity.HistorialEntity;
 import TFG.Data_Analysis.Repository.HistorialRepository;
+import TFG.Data_Analysis.Security.TokenValidator;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.csv.CSVFormat;
@@ -33,31 +34,36 @@ public class DatasetService {
     HistorialService historialService;
     private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
-    public double fileReader(String path, long userId) throws IOException {
-        try (Reader reader = Files.newBufferedReader(Paths.get(path));
-            CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
-            Map<String, Integer> headerMap = csvParser.getHeaderMap();
+    public double fileReader(String path, long userId) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            try (Reader reader = Files.newBufferedReader(Paths.get(path));
+                 CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
+                Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
-            Map<Integer, Map<String, Double>> dataset = new HashMap<>();
-            int numRow = 1;
+                Map<Integer, Map<String, Double>> dataset = new HashMap<>();
+                int numRow = 1;
 
-            for (CSVRecord csvRecord : csvParser) {
-                Map<String, Double> row = new LinkedHashMap<>();
+                for (CSVRecord csvRecord : csvParser) {
+                    Map<String, Double> row = new LinkedHashMap<>();
 
-                for (String columnName : headerMap.keySet()) {
-                    String columnValueString = csvRecord.get(columnName);
-                    Double columnValue = Double.valueOf(columnValueString.replaceAll("[^0-9]", ""));
-                    // Procesar los datos como se requiera
-                    row.put(columnName, columnValue);
+                    for (String columnName : headerMap.keySet()) {
+                        String columnValueString = csvRecord.get(columnName);
+                        Double columnValue = Double.valueOf(columnValueString.replaceAll("[^0-9]", ""));
+                        // Procesar los datos como se requiera
+                        row.put(columnName, columnValue);
+                    }
+                    dataset.put(numRow, row);
+                    ++numRow;
                 }
-                dataset.put(numRow, row);
-                ++numRow;
+
+                String datasetName = Paths.get(path).getFileName().toString();
+                datasetName = datasetName.replace(".csv", "");
+
+                return calculateEigenEntropy(dataset, userId, datasetName);
             }
-
-            String datasetName = Paths.get(path).getFileName().toString();
-            datasetName = datasetName.replace(".csv", "");
-
-            return calculateEigenEntropy(dataset, userId, datasetName);
+        }
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
         }
     }
 
@@ -95,36 +101,46 @@ public class DatasetService {
         }
     }
 
-    public List<String> getHistorial (long userId) {
-        List<String> historial = new ArrayList<>();
+    public List<String> getHistorial (long userId) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            List<String> historial = new ArrayList<>();
 
-        for (Map.Entry<String, TreeMap<Integer, DatasetModel>> entry : versions.entrySet()) {
-            TreeMap<Integer, DatasetModel> innerMap = entry.getValue();
-            String datasetName = entry.getKey();
+            for (Map.Entry<String, TreeMap<Integer, DatasetModel>> entry : versions.entrySet()) {
+                TreeMap<Integer, DatasetModel> innerMap = entry.getValue();
+                String datasetName = entry.getKey();
 
-            for (Map.Entry<Integer, DatasetModel> innerEntry : innerMap.entrySet()) {
-                historial.add(innerEntry.getKey() == 0 ? datasetName : datasetName + '_' + innerEntry.getKey());
+                for (Map.Entry<Integer, DatasetModel> innerEntry : innerMap.entrySet()) {
+                    historial.add(innerEntry.getKey() == 0 ? datasetName : datasetName + '_' + innerEntry.getKey());
+                }
             }
+            return historial;
         }
-        return historial;
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
     }
 
-    public double applyFilter(List<String> filter, long userId, String datasetName) {
-        Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
-        Map<Integer, Map<String, Double>> originalDataset = versions.get(datasetName).get(0).getDataset();
+    public double applyFilter(List<String> filter, long userId, String datasetName) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
+            Map<Integer, Map<String, Double>> originalDataset = versions.get(datasetName).get(0).getDataset();
 
-        int numRow = 1;
-        for (Map<String, Double> entry : originalDataset.values()) {
-            Map<String, Double> row = new LinkedHashMap<>();
-            for (String columnName : filter) {
-                Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
-                row.put(columnName, columnValue);
+            int numRow = 1;
+            for (Map<String, Double> entry : originalDataset.values()) {
+                Map<String, Double> row = new LinkedHashMap<>();
+                for (String columnName : filter) {
+                    Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
+                    row.put(columnName, columnValue);
+                }
+                newDataset.put(numRow, row);
+                numRow++;
             }
-            newDataset.put(numRow, row);
-            numRow++;
-        }
 
-        return calculateEigenEntropy(newDataset, userId, datasetName);
+            return calculateEigenEntropy(newDataset, userId, datasetName);
+        }
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
     }
 
     private double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset, long userId, String datasetName) {
@@ -288,21 +304,31 @@ public class DatasetService {
                 userDatasets.stream().max(Comparator.comparing(DatasetModel::getDatasetId)).get().getDatasetId() + 1;
     }
 
-    public DatasetModel getDataset(long userId, String datasetName, Integer version) {
-        ModelMapper modelMapper = new ModelMapper();
+    public DatasetModel getDataset(long userId, String datasetName, Integer version) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+            return modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+        }
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
     }
 
     public void chargeUserDatasets(String email) {
         versions = historialService.chargeUserDatasets(email);
     }
 
-    public void deleteDataset(long userId, String datasetName, Integer version) {
-        ModelMapper modelMapper = new ModelMapper();
+    public void deleteDataset(long userId, String datasetName, Integer version) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            ModelMapper modelMapper = new ModelMapper();
 
-        DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
-        datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
+            DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+            datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
+        }
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
     }
     //endregion
 }
