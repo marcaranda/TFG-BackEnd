@@ -19,26 +19,26 @@ public class DatasetController {
     DatasetService datasetService;
 
     //region Post Methods
-    @PostMapping(path = "/{userId}")
+    @PostMapping(path = "userId/{userId}")
     public double fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws IOException {
         return datasetService.fileReader(path, userId);
     }
 
-    @PostMapping(path = "/filter/{userId}/{datasetName}")
+    @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}")
     public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName) {
         return datasetService.applyFilter(filter, userId, datasetName);
     }
     //endregion
 
     //region Get Methods
-    @GetMapping(path = "/{datasetName}/{version}")
-    public DatasetDto getDataset(@PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) {
+    @GetMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
+    public DatasetDto getDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.getDataset(datasetName, version), DatasetDto.class);
+        return modelMapper.map(datasetService.getDataset(userId, datasetName, version), DatasetDto.class);
     }
 
-    @GetMapping(path = "/download/{datasetName}/{version}")
+    @GetMapping(path = "/download/datasetName/{datasetName}/version/{version}")
     public void downloadFile(@PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
         response.setContentType("text/csv");
         response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"example.csv\"");
@@ -46,7 +46,7 @@ public class DatasetController {
         datasetService.downloadFile(datasetName, downloadVersion, response);
     }
 
-    @GetMapping(path = "/historial/{userId}")
+    @GetMapping(path = "/historial/userId/{userId}")
     public List<String> getHistorial(@PathVariable("userId") long userId) {
         return datasetService.getHistorial(userId);
     }
@@ -58,9 +58,9 @@ public class DatasetController {
     //endregion
     
     //region Delete Methods
-    @DeleteMapping(path = "/{datasetId}")
-    public void deleteDataset(@PathVariable("datasetId") Long datasetId) {
-        datasetService.deleteDataset(datasetId);
+    @DeleteMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
+    public void deleteDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) {
+        datasetService.deleteDataset(userId, datasetName, version);
     }
     //endregion
 }

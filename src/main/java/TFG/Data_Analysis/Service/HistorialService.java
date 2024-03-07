@@ -8,6 +8,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -19,8 +20,15 @@ public class HistorialService {
     UserService userService;
 
     public Map<String, TreeMap<Integer, DatasetModel>> chargeUserDatasets(String email) {
+
         long userId = userService.getUserIdByEmail(email);
-        return historialRepository.findByUserId(userId).getVersions();
+
+        if (historialRepository.findByUserId(userId) != null && !historialRepository.findByUserId(userId).getVersions().isEmpty()) {
+            return historialRepository.findByUserId(userId).getVersions();
+        }
+        else {
+            return new HashMap<>();
+        }
     }
 
     public void saveDataset(long userId, Map<String, TreeMap<Integer, DatasetModel>> versions) {

@@ -16,7 +16,6 @@ import java.util.Collections;
 public class UserDetailsImpl implements UserDetails {
     private UserModel user;
 
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList();

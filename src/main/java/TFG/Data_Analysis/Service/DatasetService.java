@@ -288,18 +288,21 @@ public class DatasetService {
                 userDatasets.stream().max(Comparator.comparing(DatasetModel::getDatasetId)).get().getDatasetId() + 1;
     }
 
-    public DatasetModel getDataset(String datasetName, Integer version) {
+    public DatasetModel getDataset(long userId, String datasetName, Integer version) {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetRepo.findByDatasetNameAndVersion(datasetName, version), DatasetModel.class);
+        return modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
     }
 
     public void chargeUserDatasets(String email) {
         versions = historialService.chargeUserDatasets(email);
     }
 
-    public void deleteDataset(long datasetId) {
-        datasetRepo.deleteById(datasetId);
+    public void deleteDataset(long userId, String datasetName, Integer version) {
+        ModelMapper modelMapper = new ModelMapper();
+
+        DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+        datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
     }
     //endregion
 }
