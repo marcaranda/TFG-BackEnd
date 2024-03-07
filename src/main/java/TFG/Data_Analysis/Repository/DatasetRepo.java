@@ -9,6 +9,6 @@ import java.util.List;
 
 @Repository
 public interface DatasetRepo extends MongoRepository<DatasetEntity, Long> {
-    @Query("{ 'datasetName' :  ?0, 'version' :  ?1}")
-    DatasetEntity findByDatasetNameAndVersion(String datasetName, int version);
+    @Query("{ 'userId' : ?0, 'datasetName' :  ?1, 'version' :  ?2}")
+    DatasetEntity findByUserIdAndDatasetNameAndVersion(long userId, String datasetName, int version);
 }
