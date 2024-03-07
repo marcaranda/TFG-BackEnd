@@ -40,9 +40,6 @@ public class DatasetController {
 
     @GetMapping(path = "/download/datasetName/{datasetName}/version/{version}")
     public void downloadFile(@PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
-        response.setContentType("text/csv");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"example.csv\"");
-
         datasetService.downloadFile(datasetName, downloadVersion, response);
     }
 
