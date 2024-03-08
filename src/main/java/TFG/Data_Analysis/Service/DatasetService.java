@@ -34,7 +34,7 @@ public class DatasetService {
     HistorialService historialService;
     private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
-    public double fileReader(String path, long userId) throws Exception {
+    public DatasetModel fileReader(String path, long userId) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             try (Reader reader = Files.newBufferedReader(Paths.get(path));
                  CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
@@ -59,7 +59,8 @@ public class DatasetService {
                 String datasetName = Paths.get(path).getFileName().toString();
                 datasetName = datasetName.replace(".csv", "");
 
-                return calculateEigenEntropy(dataset, userId, datasetName);
+                double eigenEntropy = calculateEigenEntropy(dataset, userId, datasetName);
+                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
         else {
@@ -164,7 +165,6 @@ public class DatasetService {
             }
         }
 
-        saveDataset(dataset, eigenEntropy, userId, datasetName);
         return eigenEntropy;
     }
 
@@ -271,7 +271,7 @@ public class DatasetService {
     //endregion
 
     //region DataBase
-    private void saveDataset(Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId, String datasetName){
+    private DatasetModel saveDataset(Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId, String datasetName){
         ModelMapper modelMapper = new ModelMapper();
 
         long datasetId = autoIncrementId();
@@ -292,6 +292,7 @@ public class DatasetService {
 
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
         historialService.saveDataset(userId, versions);
+        return datasetModel;
     }
 
     private long autoIncrementId() {

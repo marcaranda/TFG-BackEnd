@@ -20,8 +20,10 @@ public class DatasetController {
 
     //region Post Methods
     @PostMapping(path = "userId/{userId}")
-    public double fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws Exception {
-        return datasetService.fileReader(path, userId);
+    public DatasetDto fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+
+        return modelMapper.map(datasetService.fileReader(path, userId), DatasetDto.class);
     }
 
     @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}")
