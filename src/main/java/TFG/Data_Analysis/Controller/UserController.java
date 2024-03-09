@@ -46,7 +46,12 @@ public class UserController {
     @PutMapping
     public UserDto editUser(@RequestBody UserDto user) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
-        return modelMapper.map(userService.saveUser(modelMapper.map(user, UserModel.class)), UserDto.class);
+        return modelMapper.map(userService.editUser(modelMapper.map(user, UserModel.class)), UserDto.class);
+    }
+
+    @PutMapping(path = "/userId/{userId}/changePassword")
+    public boolean changePassword(@PathVariable("userId") Long userId, @RequestAttribute("cp") String currentPassword, @RequestAttribute("np") String newPassword) throws Exception {
+        return userService.changePassword(userId, currentPassword, newPassword);
     }
     //endregion
 
