@@ -2,8 +2,6 @@ package TFG.Data_Analysis.Service;
 
 import TFG.Data_Analysis.Repository.DatasetRepo;
 import TFG.Data_Analysis.Repository.Entity.DatasetEntity;
-import TFG.Data_Analysis.Repository.Entity.HistorialEntity;
-import TFG.Data_Analysis.Repository.HistorialRepository;
 import TFG.Data_Analysis.Security.TokenValidator;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,12 +14,10 @@ import org.ejml.simple.SimpleMatrix;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -34,9 +30,13 @@ public class DatasetService {
     HistorialService historialService;
     private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
-    public DatasetModel fileReader(String path, long userId) throws Exception {
+    public DatasetModel fileReader(MultipartFile file, long userId) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
-            try (Reader reader = Files.newBufferedReader(Paths.get(path));
+            if (file.isEmpty()) {
+                throw new Exception("No file provided or the file was empty.");
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
                  CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
                 Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
@@ -56,7 +56,7 @@ public class DatasetService {
                     ++numRow;
                 }
 
-                String datasetName = Paths.get(path).getFileName().toString();
+                String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
                 double eigenEntropy = calculateEigenEntropy(dataset, userId, datasetName);
@@ -279,7 +279,7 @@ public class DatasetService {
         long datasetId = autoIncrementId();
         TreeMap<Integer, DatasetModel> datasetVersions = versions.get(datasetName);
         int version;
-        if (datasetVersions == null) {
+        if (datasetVersions == null || datasetVersions.isEmpty()) {
             datasetVersions = new TreeMap<>();
             version = 0;
         }

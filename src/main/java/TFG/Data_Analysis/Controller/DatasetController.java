@@ -8,6 +8,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -20,10 +21,10 @@ public class DatasetController {
 
     //region Post Methods
     @PostMapping(path = "userId/{userId}")
-    public DatasetDto fileReaderCSV(@RequestBody String path, @PathVariable("userId") long userId) throws Exception {
+    public DatasetDto fileReaderCSV(@RequestBody MultipartFile file, @PathVariable("userId") long userId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.fileReader(path, userId), DatasetDto.class);
+        return modelMapper.map(datasetService.fileReader(file, userId), DatasetDto.class);
     }
 
     @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}")
