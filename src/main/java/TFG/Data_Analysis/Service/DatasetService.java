@@ -326,6 +326,11 @@ public class DatasetService {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
 
+            TreeMap<Integer, DatasetModel> datasetVersions = versions.get(datasetName);
+            datasetVersions.remove(version);
+            versions.put(datasetName, datasetVersions);
+            historialService.saveDataset(userId, versions);
+
             DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
         }

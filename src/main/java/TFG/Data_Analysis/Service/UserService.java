@@ -69,7 +69,6 @@ public class UserService {
         if(tlf != null && !validatePhoneNumber(tlf)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"El número de teléfono no es válido.");
         }
-        System.out.println(user.getPassword());
         /* Encriptado de contraseña -- IMPORTANTE: Al hacer log-in, tenemos que comparar la contraseña introducida con la encriptada en la BD. Para ello,
         usamos la función checkpw(psw, pswCryp) de la clase BCrypt, pero antes tenemos que encriptar la contraseña introducida por el usuario.*/
         user.setPassword(encryptPassowrd(user.getPassword()));
