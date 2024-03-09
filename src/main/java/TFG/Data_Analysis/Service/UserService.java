@@ -3,12 +3,15 @@ package TFG.Data_Analysis.Service;
 import TFG.Data_Analysis.Helpers.Exception;
 import TFG.Data_Analysis.Repository.Entity.UserEntity;
 import TFG.Data_Analysis.Repository.UserRepo;
+import TFG.Data_Analysis.Security.TokenValidator;
 import TFG.Data_Analysis.Service.Model.UserModel;
 import org.mindrot.jbcrypt.BCrypt;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -61,12 +64,54 @@ public class UserService {
         if(tlf != null && !validatePhoneNumber(tlf)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"El número de teléfono no es válido.");
         }
-
+        System.out.println(user.getPassword());
         /* Encriptado de contraseña -- IMPORTANTE: Al hacer log-in, tenemos que comparar la contraseña introducida con la encriptada en la BD. Para ello,
         usamos la función checkpw(psw, pswCryp) de la clase BCrypt, pero antes tenemos que encriptar la contraseña introducida por el usuario.*/
         user.setPassword(encryptPassowrd(user.getPassword()));
 
         return modelMapper.map(userRepo.save(modelMapper.map(user, UserEntity.class)), UserModel.class);
+    }
+
+    public UserModel editUser(UserModel user) throws Exception {
+        if(new TokenValidator().validate_id_with_token(user.getUser_id())) {
+            ModelMapper modelMapper = new ModelMapper();
+
+            if (user == null || user.isDeleted()) {
+                throw new Exception("Error al intentar actualizar el usuario. El usuario no existe.");
+            }
+            else {
+                /* Comprobación validez correo electrónico */
+                if(!validateEmail(user.getEmail())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"El correo electrónico no es válido.");
+                }
+                /* Comprobación validez número de teléfono */
+                String tlf = user.getPhone();
+                if(tlf != null && !validatePhoneNumber(tlf)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"El número de teléfono no es válido.");
+                }
+            }
+            return modelMapper.map(userRepo.save(modelMapper.map(user, UserEntity.class)), UserModel.class);
+        }
+        else {
+            throw new Exception("El userId enviado es diferente al especificado en el token");
+        }
+    }
+
+    public boolean changePassword(Long userId, String currentPassword, String newPassword) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            ModelMapper modelMapper = new ModelMapper();
+
+            UserModel user = modelMapper.map(userRepo.findById(userId), UserModel.class);
+
+            if (decryptPassword(currentPassword, user.getPassword())) {
+                user.setPassword(newPassword);
+                userRepo.save(modelMapper.map(user, UserEntity.class));
+                return true;
+            } else return false;
+        }
+        else {
+            throw new Exception("El userId enviado es diferente al especificado en el token");
+        }
     }
     //endregion
 
@@ -116,6 +161,10 @@ public class UserService {
      */
     private String encryptPassowrd(String password) {
         return BCrypt.hashpw(password, BCrypt.gensalt());
+    }
+
+    private boolean decryptPassword(String password, String encPassword) {
+        return BCrypt.checkpw(password, encPassword);
     }
     //endregion
 }
