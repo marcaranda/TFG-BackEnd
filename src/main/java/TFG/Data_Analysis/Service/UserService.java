@@ -41,9 +41,14 @@ public class UserService {
         return users;
     }
 
-    public UserModel getUser(Long userId) {
-        ModelMapper modelMapper = new ModelMapper();
-        return modelMapper.map(userRepo.findById(userId), UserModel.class);
+    public UserModel getUser(Long userId) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            ModelMapper modelMapper = new ModelMapper();
+            return modelMapper.map(userRepo.findById(userId), UserModel.class);
+        }
+        else {
+            throw new Exception("El userId enviado es diferente al especificado en el token");
+        }
     }
 
     public long getUserIdByEmail(String email) {
@@ -117,15 +122,20 @@ public class UserService {
 
     //region Delete Methods
     public void deleteUser(Long userId) throws Exception {
-        ModelMapper modelMapper = new ModelMapper();
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            ModelMapper modelMapper = new ModelMapper();
 
-        UserModel user = getUser(userId);
-        if (user == null) {
-            throw new Exception("Error al intentar eliminar el usuario. EL usuario no existe.");
+            UserModel user = getUser(userId);
+            if (user == null) {
+                throw new Exception("Error al intentar eliminar el usuario. EL usuario no existe.");
+            }
+
+            user.setDeleted(true);
+            saveUser(user);
         }
-
-        user.setDeleted(true);
-        saveUser(user);
+        else {
+            throw new Exception("El userId enviado es diferente al especificado en el token");
+        }
     }
     //endregion
 
