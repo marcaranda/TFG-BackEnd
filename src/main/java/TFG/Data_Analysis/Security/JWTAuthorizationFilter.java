@@ -30,7 +30,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authenticationToken = TokenUtils.getAuthentication(token);
 
             if (authenticationToken != null && authenticationToken.getPrincipal() != null) {
-                UserModel us = model_mapper.map(userRepo.findByEmail(authenticationToken.getPrincipal().toString()), UserModel.class);
+                UserModel us = model_mapper.map(userRepo.findById(Long.valueOf(authenticationToken.getPrincipal().toString())), UserModel.class);
 
                 if (us != null && !us.isDeleted()) {
                     UserDetailsAux user_details_aux = new UserDetailsAux(us.getUser_id());
