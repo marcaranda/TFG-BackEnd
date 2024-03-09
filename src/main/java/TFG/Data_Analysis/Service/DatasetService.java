@@ -137,7 +137,9 @@ public class DatasetService {
                 numRow++;
             }
 
-            return calculateEigenEntropy(newDataset, userId, datasetName);
+            double eigenEntropy = calculateEigenEntropy(newDataset, userId, datasetName);
+            saveDataset(newDataset, eigenEntropy, userId, datasetName);
+            return eigenEntropy;
         }
         else {
             throw new Exception("El user_id enviado es diferente al especificado en el token");
