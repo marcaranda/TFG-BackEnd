@@ -40,17 +40,21 @@ public class DatasetService {
                  CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
                 Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
-                Map<Integer, Map<String, Double>> dataset = new HashMap<>();
+                Map<Integer, Map<Integer, Map<String, Double>>> dataset = new HashMap<>();
                 int numRow = 1;
 
                 for (CSVRecord csvRecord : csvParser) {
-                    Map<String, Double> row = new LinkedHashMap<>();
+                    Map<Integer, Map<String, Double>> row = new HashMap<>();
+                    int numColumn = 1;
 
                     for (String columnName : headerMap.keySet()) {
+                        Map<String, Double> rowValue = new LinkedHashMap<>();
                         String columnValueString = csvRecord.get(columnName);
                         Double columnValue = Double.valueOf(columnValueString.replaceAll("[^0-9]", ""));
                         // Procesar los datos como se requiera
-                        row.put(columnName, columnValue);
+                        rowValue.put(columnName, columnValue);
+                        row.put(numColumn, rowValue);
+                        ++numColumn;
                     }
                     dataset.put(numRow, row);
                     ++numRow;
@@ -59,7 +63,7 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = calculateEigenEntropy(dataset, userId, datasetName);
+                double eigenEntropy = calculateEigenEntropy(dataset);
                  return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
@@ -78,11 +82,11 @@ public class DatasetService {
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
-        Map<Integer, Map<String, Double>> downloadDataset = versions.get(datasetName).get(downloadVersion).getDataset();
+        Map<Integer, Map<Integer, Map<String, Double>>> downloadDataset = versions.get(datasetName).get(downloadVersion).getDataset();
 
         try (PrintWriter csvWriter = response.getWriter()) {
             // Escribir encabezados de columnas
-            Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue();
+            Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue().entrySet().iterator().next().getValue();
             for (String columnName : firstRow.keySet()) {
                 csvWriter.append(columnName);
                 csvWriter.append(",");
@@ -90,12 +94,14 @@ public class DatasetService {
             csvWriter.append("\n");
 
             // Escribir datos
-            for (Map<String, Double> rowData : downloadDataset.values()) {
-                for (Double value : rowData.values()) {
-                    csvWriter.append(String.valueOf(value));
-                    csvWriter.append(",");
+            for (Map<Integer, Map<String, Double>> row : downloadDataset.values()) {
+                for (Map<String, Double> rowData : row.values()) {
+                    for (Double value : rowData.values()) {
+                        csvWriter.append(String.valueOf(value));
+                        csvWriter.append(",");
+                    }
+                    csvWriter.append("\n");
                 }
-                csvWriter.append("\n");
             }
 
             csvWriter.flush();
@@ -123,21 +129,28 @@ public class DatasetService {
 
     public double applyFilter(List<String> filter, long userId, String datasetName) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
-            Map<Integer, Map<String, Double>> newDataset = new HashMap<>();
-            Map<Integer, Map<String, Double>> originalDataset = versions.get(datasetName).get(0).getDataset();
+            Map<Integer, Map<Integer, Map<String, Double>>> newDataset = new HashMap<>();
+            Map<Integer, Map<Integer, Map<String, Double>>> originalDataset = versions.get(datasetName).get(0).getDataset();
 
             int numRow = 1;
-            for (Map<String, Double> entry : originalDataset.values()) {
-                Map<String, Double> row = new LinkedHashMap<>();
-                for (String columnName : filter) {
-                    Double columnValue = entry.get(columnName); // Obtener el valor del mapa usando la clave
-                    row.put(columnName, columnValue);
+            for (Map<Integer, Map<String, Double>> entry : originalDataset.values()) {
+                for (Map<String, Double> subEntry : entry.values()) {
+                    Map<Integer, Map<String, Double>> row = new HashMap<>();
+                    Map<String, Double> rowValue = new LinkedHashMap<>();
+                    int numColumn = 1;
+
+                    for (String columnName : filter) {
+                        Double columnValue = subEntry.get(columnName); // Obtener el valor del mapa usando la clave
+                        rowValue.put(columnName, columnValue);
+                        row.put(numColumn, rowValue);
+                        ++numColumn;
+                    }
+                    newDataset.put(numRow, row);
+                    numRow++;
                 }
-                newDataset.put(numRow, row);
-                numRow++;
             }
 
-            double eigenEntropy = calculateEigenEntropy(newDataset, userId, datasetName);
+            double eigenEntropy = calculateEigenEntropy(newDataset);
             saveDataset(newDataset, eigenEntropy, userId, datasetName);
             return eigenEntropy;
         }
@@ -146,7 +159,7 @@ public class DatasetService {
         }
     }
 
-    private double calculateEigenEntropy(Map<Integer, Map<String, Double>> dataset, long userId, String datasetName) {
+    private double calculateEigenEntropy(Map<Integer, Map<Integer, Map<String, Double>>> dataset) {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
         eigDecomp.decompose(dataMatrix.getMatrix());
@@ -170,9 +183,9 @@ public class DatasetService {
         return eigenEntropy;
     }
 
-    private double[][] convertToMatrix (Map<Integer, Map<String, Double>> dataset) {
-        int numRows = dataset.size();
-        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size();
+    private double[][] convertToMatrix (Map<Integer, Map<Integer, Map<String, Double>>> dataset) {
+        int numRows = dataset.size() - 1;
+        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - 1;
 
         double[][] dataMatrix;
         if (numRows > numColumns) {
@@ -183,21 +196,23 @@ public class DatasetService {
         }
 
         int row = 0;
-        for (Map.Entry<Integer, Map<String, Double>> entry : dataset.entrySet()) {
-            Map<String, Double> values = entry.getValue();
-            boolean firstColumn = true;
-            int column = 0;
-            for (Double value : values.values()) {
-                if (!firstColumn) {
-                    if (value != null) {
-                        dataMatrix[row][column] = value;
+        for (Map.Entry<Integer, Map<Integer, Map<String, Double>>> entry : dataset.entrySet()) {
+            Map<Integer, Map<String, Double>> rowsValues = entry.getValue();
+            for (Map.Entry<Integer, Map<String, Double>> subEntry : rowsValues.entrySet()) {
+                Map<String, Double> values = subEntry.getValue();
+                boolean firstColumn = true;
+                int column = 0;
+                for (Double value : values.values()) {
+                    if (!firstColumn) {
+                        if (value != null) {
+                            dataMatrix[row][column] = value;
+                        } else {
+                            dataMatrix[row][column] = 0.0;
+                        }
+                        ++column;
                     } else {
-                        dataMatrix[row][column] = 0.0;
+                        firstColumn = false;
                     }
-                    ++column;
-                }
-                else {
-                    firstColumn = false;
                 }
             }
             ++row;
@@ -273,7 +288,7 @@ public class DatasetService {
     //endregion
 
     //region DataBase
-    private DatasetModel saveDataset(Map<Integer, Map<String, Double>> dataset, double eigenEntropy, long userId, String datasetName){
+    private DatasetModel saveDataset(Map<Integer, Map<Integer, Map<String, Double>>> dataset, double eigenEntropy, long userId, String datasetName){
         ModelMapper modelMapper = new ModelMapper();
 
         long datasetId = autoIncrementId();
