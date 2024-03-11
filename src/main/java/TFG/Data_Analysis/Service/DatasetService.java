@@ -130,25 +130,29 @@ public class DatasetService {
     public double applyFilter(List<String> filter, long userId, String datasetName) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             Map<Integer, Map<Integer, Map<String, Double>>> newDataset = new HashMap<>();
-            Map<Integer, Map<Integer, Map<String, Double>>> originalDataset = versions.get(datasetName).get(0).getDataset();
+            Map<Integer, Map<Integer, Map<String, Double>>> originalDataset = getDataset(userId, datasetName, 0).getDataset();
+            System.out.println(originalDataset);
 
             int numRow = 1;
             for (Map<Integer, Map<String, Double>> entry : originalDataset.values()) {
+                Map<Integer, Map<String, Double>> row = new HashMap<>();
+                int numColumn = 1;
                 for (Map<String, Double> subEntry : entry.values()) {
-                    Map<Integer, Map<String, Double>> row = new HashMap<>();
-                    Map<String, Double> rowValue = new LinkedHashMap<>();
-                    int numColumn = 1;
 
-                    for (String columnName : filter) {
-                        Double columnValue = subEntry.get(columnName); // Obtener el valor del mapa usando la clave
-                        rowValue.put(columnName, columnValue);
-                        row.put(numColumn, rowValue);
-                        ++numColumn;
+                    for (Map.Entry<String, Double> valueEntry : subEntry.entrySet()) {
+                        Map<String, Double> rowValue = new HashMap<>();
+                        if (filter.contains(valueEntry.getKey())) {
+                            rowValue.put(valueEntry.getKey(), valueEntry.getValue());
+                            row.put(numColumn, rowValue);
+                            ++numColumn;
+                        }
                     }
-                    newDataset.put(numRow, row);
-                    numRow++;
                 }
+                newDataset.put(numRow, row);
+                numRow++;
             }
+
+            System.out.println(newDataset);
 
             double eigenEntropy = calculateEigenEntropy(newDataset);
             saveDataset(newDataset, eigenEntropy, userId, datasetName);
