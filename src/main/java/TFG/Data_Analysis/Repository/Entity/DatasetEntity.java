@@ -10,7 +10,7 @@ public class DatasetEntity {
     //region Dataset Attribute
     @Id
     private long datasetId;
-    private Map<Integer, Map<String, Double>> dataset;
+    private Map<Integer, Map<Integer, Map<String, Double>>> dataset;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -26,11 +26,11 @@ public class DatasetEntity {
         this.datasetId = datasetId;
     }
 
-    public Map<Integer, Map<String, Double>> getDataset() {
+    public Map<Integer, Map<Integer, Map<String, Double>>> getDataset() {
         return dataset;
     }
 
-    public void setDataset(Map<Integer, Map<String, Double>> dataset) {
+    public void setDataset(Map<Integer, Map<Integer, Map<String, Double>>> dataset) {
         this.dataset = dataset;
     }
 
