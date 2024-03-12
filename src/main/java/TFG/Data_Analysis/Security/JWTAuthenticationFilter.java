@@ -53,7 +53,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                     credentials.getPassword(),
                     Collections.emptyList()
             );
-            datasetService.chargeUserDatasets(credentials.getEmail());
             return getAuthenticationManager().authenticate(authenticationToken);
         }
         else {
