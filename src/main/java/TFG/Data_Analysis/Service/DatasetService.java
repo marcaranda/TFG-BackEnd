@@ -85,9 +85,9 @@ public class DatasetService {
 
             try (PrintWriter csvWriter = response.getWriter()) {
                 // Escribir encabezados de columnas
-                Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue().entrySet().iterator().next().getValue();
-                for (String columnName : firstRow.keySet()) {
-                    csvWriter.append(columnName);
+                Map<Integer, Map<String, Double>> firstRow = downloadDataset.get(1);
+                for (Map.Entry<Integer, Map<String, Double>> entry : firstRow.entrySet()) {
+                    csvWriter.append(entry.getValue().keySet().toString());
                     csvWriter.append(",");
                 }
                 csvWriter.append("\n");
@@ -99,8 +99,8 @@ public class DatasetService {
                             csvWriter.append(String.valueOf(value));
                             csvWriter.append(",");
                         }
-                        csvWriter.append("\n");
                     }
+                    csvWriter.append("\n");
                 }
 
                 csvWriter.flush();
