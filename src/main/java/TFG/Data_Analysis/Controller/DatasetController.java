@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/file")
@@ -27,9 +28,9 @@ public class DatasetController {
         return modelMapper.map(datasetService.fileReader(file, userId), DatasetDto.class);
     }
 
-    @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}")
-    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName) throws Exception {
-        return datasetService.applyFilter(filter, userId, datasetName);
+    @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}/version/{version}")
+    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
+        return datasetService.applyFilter(filter, userId, datasetName, version);
     }
     //endregion
 
@@ -41,14 +42,19 @@ public class DatasetController {
         return modelMapper.map(datasetService.getDataset(userId, datasetName, version), DatasetDto.class);
     }
 
-    @GetMapping(path = "/download/datasetName/{datasetName}/version/{version}")
-    public void downloadFile(@PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
-        datasetService.downloadFile(datasetName, downloadVersion, response);
+    @GetMapping(path = "/download/userId/{userId}/datasetName/{datasetName}/version/{version}")
+    public void downloadFile(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
+        datasetService.downloadFile(userId, datasetName, downloadVersion, response);
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
-    public List<String> getHistorial(@PathVariable("userId") long userId) throws Exception {
-        return datasetService.getHistorial(userId);
+    public List<DatasetDto> getHistory(@PathVariable("userId") long userId) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+        List<DatasetDto> history = datasetService.getHistory(userId).stream()
+                .map(elementB -> modelMapper.map(elementB, DatasetDto.class))
+                .collect(Collectors.toList());
+
+        return history;
     }
 
     /*@GetMapping(path = "/homogeneusSamples")

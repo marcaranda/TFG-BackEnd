@@ -11,4 +11,10 @@ import java.util.List;
 public interface DatasetRepo extends MongoRepository<DatasetEntity, Long> {
     @Query("{ 'userId' : ?0, 'datasetName' :  ?1, 'version' :  ?2}")
     DatasetEntity findByUserIdAndDatasetNameAndVersion(long userId, String datasetName, int version);
+
+    @Query("{ 'userId' : ?0}")
+    List<DatasetEntity> findAllByUserId(long userId);
+
+    @Query("{ 'userId' : ?0, 'datasetName' :  ?1}")
+    List<DatasetEntity> findAllByUserIdAndDatasetName(long userId, String datasetName);
 }

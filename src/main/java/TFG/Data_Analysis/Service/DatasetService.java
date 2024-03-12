@@ -26,9 +26,6 @@ public class DatasetService {
     DatasetRepo datasetRepo;
     @Autowired
     UserService userService;
-    @Autowired
-    HistorialService historialService;
-    private Map<String, TreeMap<Integer, DatasetModel>> versions = new HashMap<>();
 
     public DatasetModel fileReader(MultipartFile file, long userId) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
@@ -72,66 +69,69 @@ public class DatasetService {
         }
     }
 
-    public void downloadFile(String datasetName, Integer downloadVersion, HttpServletResponse response) throws Exception {
-        if (!versions.get(datasetName).containsKey(downloadVersion)) {
-            throw new Exception("La versión solicitada no existe.");
-        }
-
-        String fileName = downloadVersion == 0 ? datasetName + ".csv" : datasetName + "_" + downloadVersion + ".csv";
-        // Configurar la respuesta para descargar el archivo
-        response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-
-        Map<Integer, Map<Integer, Map<String, Double>>> downloadDataset = versions.get(datasetName).get(downloadVersion).getDataset();
-
-        try (PrintWriter csvWriter = response.getWriter()) {
-            // Escribir encabezados de columnas
-            Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue().entrySet().iterator().next().getValue();
-            for (String columnName : firstRow.keySet()) {
-                csvWriter.append(columnName);
-                csvWriter.append(",");
+    public void downloadFile(Long userId, String datasetName, Integer downloadVersion, HttpServletResponse response) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            DatasetModel dataset = getDataset(userId, datasetName, downloadVersion);
+            if (dataset == null) {
+                throw new Exception("La versión solicitada no existe.");
             }
-            csvWriter.append("\n");
 
-            // Escribir datos
-            for (Map<Integer, Map<String, Double>> row : downloadDataset.values()) {
-                for (Map<String, Double> rowData : row.values()) {
-                    for (Double value : rowData.values()) {
-                        csvWriter.append(String.valueOf(value));
-                        csvWriter.append(",");
-                    }
-                    csvWriter.append("\n");
+            String fileName = downloadVersion == 0 ? datasetName + ".csv" : datasetName + "_" + downloadVersion + ".csv";
+            // Configurar la respuesta para descargar el archivo
+            response.setContentType("text/csv");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+            Map<Integer, Map<Integer, Map<String, Double>>> downloadDataset = dataset.getDataset();
+
+            try (PrintWriter csvWriter = response.getWriter()) {
+                // Escribir encabezados de columnas
+                Map<String, Double> firstRow = downloadDataset.entrySet().iterator().next().getValue().entrySet().iterator().next().getValue();
+                for (String columnName : firstRow.keySet()) {
+                    csvWriter.append(columnName);
+                    csvWriter.append(",");
                 }
+                csvWriter.append("\n");
+
+                // Escribir datos
+                for (Map<Integer, Map<String, Double>> row : downloadDataset.values()) {
+                    for (Map<String, Double> rowData : row.values()) {
+                        for (Double value : rowData.values()) {
+                            csvWriter.append(String.valueOf(value));
+                            csvWriter.append(",");
+                        }
+                        csvWriter.append("\n");
+                    }
+                }
+
+                csvWriter.flush();
             }
 
-            csvWriter.flush();
         }
+        else {
+            throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
+
     }
 
-    public List<String> getHistorial (long userId) throws Exception {
+    public List<DatasetModel> getHistory(long userId) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
-            List<String> historial = new ArrayList<>();
+            ModelMapper modelMapper = new ModelMapper();
+            List<DatasetModel> history = new ArrayList<>();
 
-            for (Map.Entry<String, TreeMap<Integer, DatasetModel>> entry : versions.entrySet()) {
-                TreeMap<Integer, DatasetModel> innerMap = entry.getValue();
-                String datasetName = entry.getKey();
-
-                for (Map.Entry<Integer, DatasetModel> innerEntry : innerMap.entrySet()) {
-                    historial.add(innerEntry.getKey() == 0 ? datasetName : datasetName + '_' + innerEntry.getKey());
-                }
-            }
-            return historial;
+            datasetRepo.findAllByUserId(userId).forEach(elementB -> history.add(modelMapper.map(elementB, DatasetModel.class)));
+            return history;
         }
         else {
             throw new Exception("El user_id enviado es diferente al especificado en el token");
         }
     }
 
-    public double applyFilter(List<String> filter, long userId, String datasetName) throws Exception {
+    public double applyFilter(List<String> filter, long userId, String datasetName, int version) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             Map<Integer, Map<Integer, Map<String, Double>>> newDataset = new HashMap<>();
-            Map<Integer, Map<Integer, Map<String, Double>>> originalDataset = getDataset(userId, datasetName, 0).getDataset();
-            System.out.println(originalDataset);
+            Map<Integer, Map<Integer, Map<String, Double>>> originalDataset = getDataset(userId, datasetName, version).getDataset();
+
+
 
             int numRow = 1;
             for (Map<Integer, Map<String, Double>> entry : originalDataset.values()) {
@@ -151,8 +151,6 @@ public class DatasetService {
                 newDataset.put(numRow, row);
                 numRow++;
             }
-
-            System.out.println(newDataset);
 
             double eigenEntropy = calculateEigenEntropy(newDataset);
             saveDataset(newDataset, eigenEntropy, userId, datasetName);
@@ -295,24 +293,21 @@ public class DatasetService {
     private DatasetModel saveDataset(Map<Integer, Map<Integer, Map<String, Double>>> dataset, double eigenEntropy, long userId, String datasetName){
         ModelMapper modelMapper = new ModelMapper();
 
+        List<DatasetModel> datasetsVersions = new ArrayList<>();
+        datasetRepo.findAllByUserIdAndDatasetName(userId, datasetName).forEach(elementB -> datasetsVersions.add(modelMapper.map(elementB, DatasetModel.class)));
+        long version = 0;
+
+
+        if (!datasetsVersions.isEmpty()) {
+            for (DatasetModel datasetVersion : datasetsVersions) {
+                if (datasetVersion.getVersion() + 1 > version) version = datasetVersion.getVersion() + 1;
+            }
+        }
+
         long datasetId = autoIncrementId();
-        TreeMap<Integer, DatasetModel> datasetVersions = versions.get(datasetName);
-        int version;
-        if (datasetVersions == null || datasetVersions.isEmpty()) {
-            datasetVersions = new TreeMap<>();
-            version = 0;
-        }
-        else {
-            version = datasetVersions.lastKey() + 1;
-        }
 
         DatasetModel datasetModel = new DatasetModel(datasetId, dataset, eigenEntropy, userId, datasetName, version);
-
-        datasetVersions.put(version, datasetModel);
-        versions.put(datasetName, datasetVersions);
-
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
-        historialService.saveDataset(userId, versions);
         return datasetModel;
     }
 
@@ -337,18 +332,9 @@ public class DatasetService {
         }
     }
 
-    public void chargeUserDatasets(String email) {
-        versions = historialService.chargeUserDatasets(email);
-    }
-
     public void deleteDataset(long userId, String datasetName, Integer version) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
-
-            TreeMap<Integer, DatasetModel> datasetVersions = versions.get(datasetName);
-            datasetVersions.remove(version);
-            versions.put(datasetName, datasetVersions);
-            historialService.saveDataset(userId, versions);
 
             DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
