@@ -1,11 +1,13 @@
 package TFG.Data_Analysis.Service.Model;
 
+import TFG.Data_Analysis.Helpers.Pair;
+
 import java.util.Map;
 
 public class DatasetModel {
     //region Dataset Attribute
     private long datasetId;
-    private Map<Integer, Map<Integer, Map<String, Double>>> dataset;
+    private Map<Integer, Map<Integer, Pair<String, Double>>> dataset;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -16,7 +18,7 @@ public class DatasetModel {
     public DatasetModel() {
     }
 
-    public DatasetModel(long datasetId, Map<Integer, Map<Integer, Map<String, Double>>> dataset, double eigenEntropy, long userId, String datasetName, long version) {
+    public DatasetModel(long datasetId, Map<Integer, Map<Integer, Pair<String, Double>>> dataset, double eigenEntropy, long userId, String datasetName, long version) {
         this.datasetId = datasetId;
         this.dataset = dataset;
         this.eigenEntropy = eigenEntropy;
@@ -35,11 +37,11 @@ public class DatasetModel {
         this.datasetId = datasetId;
     }
 
-    public Map<Integer, Map<Integer, Map<String, Double>>> getDataset() {
+    public Map<Integer, Map<Integer, Pair<String, Double>>> getDataset() {
         return dataset;
     }
 
-    public void setDataset(Map<Integer, Map<Integer, Map<String, Double>>> dataset) {
+    public void setDataset(Map<Integer, Map<Integer, Pair<String, Double>>> dataset) {
         this.dataset = dataset;
     }
 
