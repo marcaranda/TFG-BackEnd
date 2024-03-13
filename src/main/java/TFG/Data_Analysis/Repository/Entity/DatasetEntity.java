@@ -1,9 +1,11 @@
 package TFG.Data_Analysis.Repository.Entity;
 
 import TFG.Data_Analysis.Helpers.Pair;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
 import java.util.Map;
 
 @Document(collection = "Datasets")
@@ -11,7 +13,7 @@ public class DatasetEntity {
     //region Dataset Attribute
     @Id
     private long datasetId;
-    private Map<Integer, Map<Integer, Pair<String, Double>>> dataset;
+    private List<ObjectId> fileIds;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -27,12 +29,12 @@ public class DatasetEntity {
         this.datasetId = datasetId;
     }
 
-    public Map<Integer, Map<Integer, Pair<String, Double>>> getDataset() {
-        return dataset;
+    public List<ObjectId> getFileIds() {
+        return fileIds;
     }
 
-    public void setDataset(Map<Integer, Map<Integer, Pair<String, Double>>> dataset) {
-        this.dataset = dataset;
+    public void setFileIds(List<ObjectId> fileIds) {
+        this.fileIds = fileIds;
     }
 
     public double getEigenEntropy() {
