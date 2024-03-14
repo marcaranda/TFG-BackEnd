@@ -14,9 +14,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.bson.types.ObjectId;
-import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
-import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
-import org.ejml.simple.SimpleMatrix;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -35,6 +32,8 @@ import java.util.stream.Collectors;
 public class DatasetService {
     @Autowired
     DatasetRepo datasetRepo;
+    @Autowired
+    EntropyService entropyService;
     @Autowired
     GridFsTemplate gridFsTemplate;
 
@@ -72,7 +71,7 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = calculateEigenEntropy(dataset);
+                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
@@ -160,7 +159,7 @@ public class DatasetService {
                 numRow++;
             }
 
-            double eigenEntropy = calculateEigenEntropy(newDataset);
+            double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
             saveDataset(newDataset, eigenEntropy, userId, datasetName);
             return eigenEntropy;
         }
@@ -168,127 +167,6 @@ public class DatasetService {
             throw new Exception("El user_id enviado es diferente al especificado en el token");
         }
     }
-
-    private double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
-        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
-        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
-        eigDecomp.decompose(dataMatrix.getMatrix());
-
-        double sum = 0;
-        for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
-            double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
-            sum += eigenvalue;
-        }
-
-        // Calcular entropía de Shannon para los valores propios normalizados
-        double eigenEntropy = 0;
-        for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
-            double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
-            double p = eigenvalue / sum;
-            if (p > 0) {
-                eigenEntropy -= p * Math.log(p);
-            }
-        }
-
-        return eigenEntropy;
-    }
-
-    private double[][] convertToMatrix (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
-        int numRows = dataset.size();
-        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - 1;
-
-        double[][] dataMatrix;
-        if (numRows > numColumns) {
-            dataMatrix = new double[numRows][numRows];
-        }
-        else {
-            dataMatrix = new double[numColumns][numColumns];
-        }
-
-        int row = 0;
-        for (Map<Integer, Pair<String, String>> entry : dataset.values()) {
-            int column = 0;
-            for (Pair<String, String> value : entry.values()) {
-                if (column > 0) {
-                    if (value.getValue() != null) {
-                        dataMatrix[row][column - 1] = Double.parseDouble(value.getValue());
-                    } else {
-                        dataMatrix[row][column - 1] = 0.0;
-                    }
-                }
-                ++column;
-            }
-            ++row;
-        }
-
-        return dataMatrix;
-    }
-
-    //region Sample
-    /*public double homogeneusSamples(Integer newRows) {
-        Map<Integer, Map<String, Double>> newDataset = dataset;
-        int numRow = dataset.size() + 1;
-        double newEigenEntropy = 0.0;
-
-        for (int i = 0; i < newRows; ++i) {
-            Map<String, Double> artificialRow = generateArtificialRow(newDataset);
-
-            newDataset.put(numRow, artificialRow);
-            double posibleEigenEntropy = calculateEigenEntropy(newDataset);
-            if (posibleEigenEntropy < eigenEntropy) {
-                newEigenEntropy = posibleEigenEntropy;
-                ++numRow;
-            }
-            else {
-                newDataset.remove(numRow);
-                --i;
-            }
-        }
-
-        return newEigenEntropy;
-    }
-
-    private Map<String, Double> generateArtificialRow(Map<Integer, Map<String, Double>> newDataset) {
-        List<Integer> keys = new ArrayList<>(newDataset.keySet());
-        Integer randomKey = keys.get(new Random().nextInt(keys.size()));
-        Map<String, Double> randomSample = newDataset.get(randomKey);
-
-        int k = 2;
-        List<Map<String, Double>> neighbors = findKNearestNeighbors(newDataset, randomSample, k);
-
-        Map<String, Double> neighborSample = neighbors.get(new Random().nextInt(neighbors.size()));
-
-        return generateNewRow(randomSample, neighborSample);
-    }
-
-    private List<Map<String, Double>> findKNearestNeighbors(Map<Integer, Map<String, Double>> newDataset, Map<String, Double> randomSample, int k) {
-        return newDataset.values().stream()
-                .sorted(Comparator.comparingDouble(s -> calculateEuclideanDistance(randomSample, s)))
-                .limit(k)
-                .collect(Collectors.toList());
-    }
-
-    private double calculateEuclideanDistance(Map<String, Double> sample1, Map<String, Double> sample2) {
-        double sum = 0;
-        for (String key : sample1.keySet()) {
-            double diff = sample1.get(key) - sample2.getOrDefault(key, 0.0);
-            sum += diff * diff;
-        }
-        return Math.sqrt(sum);
-    }
-
-    private Map<String, Double> generateNewRow(Map<String, Double> randomSample, Map<String, Double> neighborSample) {
-         Map<String, Double> artificialRow = new LinkedHashMap<>();
-         Random random = new Random();
-         for (String key : randomSample.keySet()) {
-             double diff = neighborSample.get(key) - randomSample.get(key);
-             double gap = random.nextDouble();
-             artificialRow.put(key, randomSample.get(key) + gap * diff);
-         }
-
-         return artificialRow;
-    }*/
-    //endregion
 
     //region DataBase
     private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
