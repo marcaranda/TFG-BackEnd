@@ -137,7 +137,7 @@ public class DatasetService {
         }
     }
 
-    public double applyFilter(List<String> filter, long userId, String datasetName, int version) throws Exception {
+    public DatasetModel applyFilter(List<String> filter, long userId, String datasetName, int version) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
             Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = getDataset(userId, datasetName, version).getDataset();
@@ -158,8 +158,7 @@ public class DatasetService {
             }
 
             double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
-            saveDataset(newDataset, eigenEntropy, userId, datasetName);
-            return eigenEntropy;
+            return saveDataset(newDataset, eigenEntropy, userId, datasetName);
         }
         else {
             throw new Exception("El user_id enviado es diferente al especificado en el token");
