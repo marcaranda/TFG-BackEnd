@@ -52,7 +52,7 @@ public class EntropyService {
             int column = 0;
             for (Pair<String, String> value : entry.values()) {
                 if (column > 0) {
-                    if (value.getValue() != null) {
+                    if (value.getValue() != null ) {
                         dataMatrix[row][column - 1] = Double.parseDouble(value.getValue());
                     }
                 }
@@ -70,8 +70,7 @@ public class EntropyService {
 
         for (int i = 0; i < numCols; i++) {
             for (int j = i; j < numCols; j++) {
-                double correlation = computeCorrelation(dataMatrix.extractVector(false, i),
-                        dataMatrix.extractVector(false, j));
+                double correlation = computeCorrelation(dataMatrix.extractVector(false, i), dataMatrix.extractVector(false, j));
                 correlationMatrix.set(i, j, correlation);
                 correlationMatrix.set(j, i, correlation);  // La matriz de correlación es simétrica
             }
@@ -87,10 +86,14 @@ public class EntropyService {
         SimpleMatrix centeredX = vectorX.minus(meanX);
         SimpleMatrix centeredY = vectorY.minus(meanY);
 
-        double covariance = centeredX.dot(centeredY);
         double stdDevX = centeredX.normF();
         double stdDevY = centeredY.normF();
 
+        if (stdDevX == 0 || stdDevY == 0) {
+            return 0;
+        }
+
+        double covariance = centeredX.dot(centeredY);
         return covariance / (stdDevX * stdDevY);
     }
 

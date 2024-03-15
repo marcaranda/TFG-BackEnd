@@ -26,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class DatasetService {
@@ -45,7 +44,6 @@ public class DatasetService {
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
                  CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
-                Map<String, Integer> headerMap = csvParser.getHeaderMap();
 
                 Map<Integer, Map<Integer, Pair<String, String>>> dataset = new HashMap<>();
                 int numRow = 1;
@@ -56,7 +54,7 @@ public class DatasetService {
 
                     for (Map.Entry<String, Integer> entry : csvParser.getHeaderMap().entrySet().stream()
                             .sorted(Map.Entry.comparingByValue())
-                            .collect(Collectors.toList())) {
+                            .toList()) {
                         String columnName = entry.getKey();
                         String columnValue = csvRecord.get(columnName);
                         // Procesar los datos como se requiera
