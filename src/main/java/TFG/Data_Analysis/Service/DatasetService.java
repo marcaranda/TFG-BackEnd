@@ -127,7 +127,8 @@ public class DatasetService {
 
             datasetRepo.findAllByUserId(userId).forEach(elementB -> {
                 DatasetModel datasetModel = modelMapper.map(elementB, DatasetModel.class);
-                datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
+                //Cargar Datasets sin el contenido por eficiencia de tiempo
+                //datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
                 history.add(datasetModel);
             });
             return history;
