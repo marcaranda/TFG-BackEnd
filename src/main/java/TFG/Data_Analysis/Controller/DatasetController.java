@@ -29,8 +29,10 @@ public class DatasetController {
     }
 
     @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public double applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
-        return datasetService.applyFilter(filter, userId, datasetName, version);
+    public DatasetDto applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+
+        return modelMapper.map(datasetService.applyFilter(filter, userId, datasetName, version), DatasetDto.class);
     }
     //endregion
 
