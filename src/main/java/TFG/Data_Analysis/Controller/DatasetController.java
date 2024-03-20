@@ -59,10 +59,12 @@ public class DatasetController {
         return history;
     }
 
-    /*@GetMapping(path = "/homogeneusSamples")
-    public double homogeneusSamples(@RequestParam(value = "newRows") Integer newRows){
-        return datasetService.homogeneusSamples(newRows);
-    }*/
+    @GetMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}/version/{version}/improve/{improve}/type/{type}")
+    public DatasetDto applySampleFilter(@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version, @PathVariable("improve") String improve, @PathVariable("type") String type) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+
+        return  modelMapper.map(datasetService.applySampleFilter(userId, datasetName, version, improve, type), DatasetDto.class);
+    }
     //endregion
     
     //region Delete Methods

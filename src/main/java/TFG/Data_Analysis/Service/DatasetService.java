@@ -166,6 +166,29 @@ public class DatasetService {
         }
     }
 
+    public DatasetModel applySampleFilter(long userId, String datasetName, int version, String improve, String type) throws Exception {
+        if(new TokenValidator().validate_id_with_token(userId)) {
+            DatasetModel datasetModel = getDataset(userId, datasetName, version);
+            DatasetModel newDataset;
+
+            if (improve.equals("Homogeneity") && type.equals("Reduce")) {
+                newDataset = entropyService.sampleHomoReduce(datasetModel);
+            } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
+                newDataset = entropyService.sampleHomoIncrease(datasetModel);
+            } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
+                newDataset = entropyService.sampleHeteReduce(datasetModel);
+            } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
+                newDataset = entropyService.sampleHeteIncrease(datasetModel);
+            } else {
+                throw new Exception("Incorrect Sample Filter Type");
+            }
+            return newDataset;
+        }
+        else {
+        throw new Exception("El user_id enviado es diferente al especificado en el token");
+        }
+    }
+
     //region DataBase
     private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
         ModelMapper modelMapper = new ModelMapper();

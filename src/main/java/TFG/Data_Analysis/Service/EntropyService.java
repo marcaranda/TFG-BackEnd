@@ -1,6 +1,7 @@
 package TFG.Data_Analysis.Service;
 
 import TFG.Data_Analysis.Helpers.Pair;
+import TFG.Data_Analysis.Service.Model.DatasetModel;
 import org.ejml.dense.row.MatrixFeatures_DDRM;
 import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
 import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
@@ -11,6 +12,8 @@ import java.util.Map;
 
 @Service
 public class EntropyService {
+
+    //region Calculate Eigen Entropy
     public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
@@ -96,6 +99,37 @@ public class EntropyService {
         double covariance = centeredX.dot(centeredY);
         return covariance / (stdDevX * stdDevY);
     }
+    //endregion
+
+    //region Sample
+    //Reduce number of rows to improve Homogenity
+    public DatasetModel sampleHomoReduce(DatasetModel dataset) {
+        DatasetModel newDataset = new DatasetModel();
+
+        return newDataset;
+    }
+
+    //Increase number of rows to improve Homogenity
+    public DatasetModel sampleHomoIncrease(DatasetModel dataset) {
+        DatasetModel newDataset = new DatasetModel();
+
+        return newDataset;
+    }
+
+    //Reduce number of rows to improve Heterogenity
+    public DatasetModel sampleHeteReduce(DatasetModel dataset) {
+        DatasetModel newDataset = new DatasetModel();
+
+        return newDataset;
+    }
+
+    //Increase number of rows to improve Heterogenity
+    public DatasetModel sampleHeteIncrease(DatasetModel dataset) {
+        DatasetModel newDataset = new DatasetModel();
+
+        return newDataset;
+    }
+    //endregion
 
     //region Sample
     /*public double homogeneusSamples(Integer newRows) {
