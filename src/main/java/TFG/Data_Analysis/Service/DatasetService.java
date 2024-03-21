@@ -92,16 +92,16 @@ public class DatasetService {
         Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = datasetModel.getDataset();
         StringJoiner csvRow = new StringJoiner(",");
 
-        try (PrintWriter csvWriter = response.getWriter()) {
-            // Escribir encabezados de columnas
-            Map<Integer, Pair<String, String>> firstRow = downloadDataset.get(1);
-            for (Map.Entry<Integer, Pair<String, String>> entry : firstRow.entrySet()) {
-                //csvWriter.append(entry.getValue().getColumn());
-                //csvWriter.append(",");
-                csvRow.add(entry.getValue().getColumn());
-            }
-            csvWriter.append(csvRow.toString());
-            csvWriter.append("\n");
+            try (PrintWriter csvWriter = response.getWriter()) {
+                // Escribir encabezados de columnas
+                Map<Integer, Pair<String, String>> firstRow = downloadDataset.get(1);
+                for (Map.Entry<Integer, Pair<String, String>> entry : firstRow.entrySet()) {
+                    //csvWriter.append(entry.getValue().getColumn());
+                    //csvWriter.append(",");
+                    csvRow.add(entry.getValue().getColumn());
+                }
+                csvWriter.append(csvRow.toString());
+                csvWriter.append("\n");
 
             // Escribir datos
             for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
