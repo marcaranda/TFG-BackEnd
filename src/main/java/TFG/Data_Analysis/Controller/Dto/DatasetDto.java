@@ -15,13 +15,15 @@ public class DatasetDto {
     private long userId;
     private String datasetName;
     private long version;
+    private int rows;
+    private int columns;
     //endregion
 
     //region Constructor
     public DatasetDto() {
     }
 
-    public DatasetDto(long datasetId, Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<ObjectId> fileIds, double eigenEntropy, long userId, String datasetName, long version) {
+    public DatasetDto(long datasetId, Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<ObjectId> fileIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
         this.datasetId = datasetId;
         this.dataset = dataset;
         this.fileIds = fileIds;
@@ -29,6 +31,8 @@ public class DatasetDto {
         this.userId = userId;
         this.datasetName = datasetName;
         this.version = version;
+        this.rows = rows;
+        this.columns = columns;
     }
 
     //endregion
@@ -88,6 +92,22 @@ public class DatasetDto {
 
     public void setVersion(long version) {
         this.version = version;
+    }
+
+    public int getRows() {
+        return rows;
+    }
+
+    public void setRows(int rows) {
+        this.rows = rows;
+    }
+
+    public int getColumns() {
+        return columns;
+    }
+
+    public void setColumns(int columns) {
+        this.columns = columns;
     }
     //endregion
 }
