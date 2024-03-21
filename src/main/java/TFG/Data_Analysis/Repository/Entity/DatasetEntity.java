@@ -18,6 +18,8 @@ public class DatasetEntity {
     private long userId;
     private String datasetName;
     private long version;
+    private int rows;
+    private int columns;
     //endregion
 
     //region Getters & Setters
@@ -67,6 +69,22 @@ public class DatasetEntity {
 
     public void setVersion(long version) {
         this.version = version;
+    }
+
+    public int getRows() {
+        return rows;
+    }
+
+    public void setRows(int rows) {
+        this.rows = rows;
+    }
+
+    public int getColumns() {
+        return columns;
+    }
+
+    public void setColumns(int columns) {
+        this.columns = columns;
     }
     //endregion
 }

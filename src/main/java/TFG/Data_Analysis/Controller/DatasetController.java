@@ -28,25 +28,25 @@ public class DatasetController {
         return modelMapper.map(datasetService.fileReader(file, userId), DatasetDto.class);
     }
 
-    @PostMapping(path = "/filter/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public DatasetDto applyFilter(@RequestBody List<String> filter,@PathVariable("userId") long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
+    @PostMapping(path = "/filter/datasetId/{datasetId}")
+    public DatasetDto applyFilter(@RequestBody List<String> filter, @PathVariable("datasetId") long datasetId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.applyFilter(filter, userId, datasetName, version), DatasetDto.class);
+        return modelMapper.map(datasetService.applyFilter(filter, datasetId), DatasetDto.class);
     }
     //endregion
 
     //region Get Methods
-    @GetMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public DatasetDto getDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
+    @GetMapping(path = "/datasetId/{datasetId}")
+    public DatasetDto getDataset(@PathVariable("datasetId") long datasetId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.getDataset(userId, datasetName, version), DatasetDto.class);
+        return modelMapper.map(datasetService.getDataset(datasetId), DatasetDto.class);
     }
 
-    @GetMapping(path = "/download/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public void downloadFile(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer downloadVersion, HttpServletResponse response) throws Exception {
-        datasetService.downloadFile(userId, datasetName, downloadVersion, response);
+    @GetMapping(path = "/download/datasetId/{datasetId}")
+    public void downloadFile(@PathVariable("datasetId") long datasetId, HttpServletResponse response) throws Exception {
+        datasetService.downloadFile(datasetId, response);
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
@@ -59,16 +59,18 @@ public class DatasetController {
         return history;
     }
 
-    /*@GetMapping(path = "/homogeneusSamples")
-    public double homogeneusSamples(@RequestParam(value = "newRows") Integer newRows){
-        return datasetService.homogeneusSamples(newRows);
-    }*/
+    @GetMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
+    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+
+        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type), DatasetDto.class);
+    }
     //endregion
     
     //region Delete Methods
-    @DeleteMapping(path = "/userId/{userId}/datasetName/{datasetName}/version/{version}")
-    public void deleteDataset(@PathVariable("userId") Long userId, @PathVariable("datasetName") String datasetName, @PathVariable("version") Integer version) throws Exception {
-        datasetService.deleteDataset(userId, datasetName, version);
+    @DeleteMapping(path = "/datasetId/{datasetId}")
+    public void deleteDataset(@PathVariable("datasetId") long datasetId) throws Exception {
+        datasetService.deleteDataset(datasetId);
     }
     //endregion
 }

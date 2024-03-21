@@ -78,20 +78,19 @@ public class DatasetService {
         }
     }
 
-    public void downloadFile(Long userId, String datasetName, Integer downloadVersion, HttpServletResponse response) throws Exception {
-        if(new TokenValidator().validate_id_with_token(userId)) {
-            DatasetModel dataset = getDataset(userId, datasetName, downloadVersion);
-            if (dataset == null) {
-                throw new Exception("La versión solicitada no existe.");
-            }
+    public void downloadFile(long datasetId, HttpServletResponse response) throws Exception {
+        DatasetModel datasetModel = getDataset(datasetId);
+        if (datasetModel == null) {
+            throw new Exception("La versión solicitada no existe.");
+        }
 
-            String fileName = downloadVersion == 0 ? datasetName + ".csv" : datasetName + "_" + downloadVersion + ".csv";
-            // Configurar la respuesta para descargar el archivo
-            response.setContentType("text/csv");
-            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+        String fileName = datasetModel.getVersion() == 0 ? datasetModel.getDatasetName() + ".csv" : datasetModel.getDatasetName() + "_" + datasetModel.getVersion() + ".csv";
+        // Configurar la respuesta para descargar el archivo
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
-            Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = dataset.getDataset();
-            StringJoiner csvRow = new StringJoiner(",");
+        Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = datasetModel.getDataset();
+        StringJoiner csvRow = new StringJoiner(",");
 
             try (PrintWriter csvWriter = response.getWriter()) {
                 // Escribir encabezados de columnas
@@ -104,23 +103,17 @@ public class DatasetService {
                 csvWriter.append(csvRow.toString());
                 csvWriter.append("\n");
 
-                // Escribir datos
-                for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
-                    for (Pair<String, String> rowData : row.values()) {
-                        csvWriter.append(String.valueOf(rowData.getValue()));
-                        csvWriter.append(",");
-                    }
-                    csvWriter.append("\n");
+            // Escribir datos
+            for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
+                for (Pair<String, String> rowData : row.values()) {
+                    csvWriter.append(String.valueOf(rowData.getValue()));
+                    csvWriter.append(",");
                 }
-
-                csvWriter.flush();
+                csvWriter.append("\n");
             }
 
+            csvWriter.flush();
         }
-        else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
-        }
-
     }
 
     public List<DatasetModel> getHistory(long userId) throws Exception {
@@ -141,32 +134,47 @@ public class DatasetService {
         }
     }
 
-    public DatasetModel applyFilter(List<String> filter, long userId, String datasetName, int version) throws Exception {
-        if(new TokenValidator().validate_id_with_token(userId)) {
-            Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
-            Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = getDataset(userId, datasetName, version).getDataset();
+    public DatasetModel applyFilter(List<String> filter, long datasetId) throws Exception {
+        DatasetModel datasetModel = getDataset(datasetId);
 
-            int numRow = 1;
-            for (Map<Integer, Pair<String, String>> entry : originalDataset.values()) {
-                Map<Integer, Pair<String, String>> row = new HashMap<>();
-                int numColumn = 1;
-                for (Pair<String, String> subEntry : entry.values()) {
-                    if (filter.contains(subEntry.getColumn())) {
-                        Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
-                        row.put(numColumn, rowValue);
-                        ++numColumn;
-                    }
+        Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+
+        int numRow = 1;
+        for (Map<Integer, Pair<String, String>> entry : originalDataset.values()) {
+            Map<Integer, Pair<String, String>> row = new HashMap<>();
+            int numColumn = 1;
+            for (Pair<String, String> subEntry : entry.values()) {
+                if (filter.contains(subEntry.getColumn())) {
+                    Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
+                    row.put(numColumn, rowValue);
+                    ++numColumn;
                 }
-                newDataset.put(numRow, row);
-                numRow++;
             }
+            newDataset.put(numRow, row);
+            numRow++;
+        }
 
-            double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
-            return saveDataset(newDataset, eigenEntropy, userId, datasetName);
+        double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
+        return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+    }
+
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type) throws Exception {
+        DatasetModel datasetModel = getDataset(datasetId);
+        DatasetModel newDataset;
+
+        if (improve.equals("Homogeneity") && type.equals("Reduce")) {
+            newDataset = entropyService.sampleHomoReduce(datasetModel);
+        } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
+            newDataset = entropyService.sampleHomoIncrease(datasetModel);
+        } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
+            newDataset = entropyService.sampleHeteReduce(datasetModel);
+        } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
+            newDataset = entropyService.sampleHeteIncrease(datasetModel);
+        } else {
+            throw new Exception("Incorrect Sample Filter Type");
         }
-        else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
-        }
+        return newDataset;
     }
 
     //region DataBase
@@ -188,17 +196,18 @@ public class DatasetService {
 
         List<ObjectId> fileIds = saveDatasetMap(dataset, datasetId);
 
-        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, fileIds, eigenEntropy, userId, datasetName, version);
+        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, fileIds, eigenEntropy, userId, datasetName, version, dataset.size(), dataset.get(1).size());
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
 
         return datasetModel;
     }
 
-    public DatasetModel getDataset(long userId, String datasetName, Integer version) throws Exception {
-        if(new TokenValidator().validate_id_with_token(userId)) {
-            ModelMapper modelMapper = new ModelMapper();
+    public DatasetModel getDataset(long datasetId) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+        DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
-            DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+        if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
+            //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
             return datasetModel;
         }
@@ -207,11 +216,12 @@ public class DatasetService {
         }
     }
 
-    public void deleteDataset(long userId, String datasetName, Integer version) throws Exception {
-        if(new TokenValidator().validate_id_with_token(userId)) {
-            ModelMapper modelMapper = new ModelMapper();
+    public void deleteDataset(long datasetId) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+        DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
-            DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
+        if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
+            //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             deleteDatasetMap(datasetModel.getFileIds());
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
         }
