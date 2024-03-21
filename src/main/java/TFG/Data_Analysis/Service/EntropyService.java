@@ -8,7 +8,9 @@ import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
 import org.ejml.simple.SimpleMatrix;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @Service
 public class EntropyService {
@@ -103,97 +105,95 @@ public class EntropyService {
 
     //region Sample
     //Reduce number of rows to improve Homogenity
-    public DatasetModel sampleHomoReduce(DatasetModel dataset) {
-        DatasetModel newDataset = new DatasetModel();
+    public DatasetModel sampleHomoReduce(DatasetModel datasetModel) {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        double eigenEntropy = datasetModel.getEigenEntropy();
 
-        return newDataset;
+
+        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Increase number of rows to improve Homogenity
-    public DatasetModel sampleHomoIncrease(DatasetModel dataset) {
-        DatasetModel newDataset = new DatasetModel();
+    public DatasetModel sampleHomoIncrease(DatasetModel datasetModel, int numExtraRows) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = dataset;
+        double eigenEntropy = datasetModel.getEigenEntropy();
+        double newEigenEntropy = 0;
 
-        return newDataset;
+        int numRows = dataset.size();
+        int numMaxRows = numRows + numExtraRows;
+        int numNewRow = numRows + 1;
+
+        while (numNewRow <= numMaxRows){
+            Map<Integer, Pair<String, String>> newRow = createArtificialRow(dataset);
+            newDataset.put(numNewRow, newRow);
+            
+            newEigenEntropy = calculateEigenEntropy(newDataset);
+            
+            if (newEigenEntropy < eigenEntropy) ++numNewRow;
+            else newDataset.remove(numNewRow);
+        }
+
+        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Reduce number of rows to improve Heterogenity
-    public DatasetModel sampleHeteReduce(DatasetModel dataset) {
-        DatasetModel newDataset = new DatasetModel();
+    public DatasetModel sampleHeteReduce(DatasetModel datasetModel) {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        double eigenEntropy = datasetModel.getEigenEntropy();
 
-        return newDataset;
+
+        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Increase number of rows to improve Heterogenity
-    public DatasetModel sampleHeteIncrease(DatasetModel dataset) {
-        DatasetModel newDataset = new DatasetModel();
+    public DatasetModel sampleHeteIncrease(DatasetModel datasetModel, int numExtraRows) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = dataset;
+        double eigenEntropy = datasetModel.getEigenEntropy();
+        double newEigenEntropy = 0;
 
-        return newDataset;
-    }
-    //endregion
+        int numRows = dataset.size();
+        int numMaxRows = numRows + numExtraRows;
+        int numNewRow = numRows + 1;
 
-    //region Sample
-    /*public double homogeneusSamples(Integer newRows) {
-        Map<Integer, Map<String, Double>> newDataset = dataset;
-        int numRow = dataset.size() + 1;
-        double newEigenEntropy = 0.0;
+        while (numNewRow <= numMaxRows){
+            Map<Integer, Pair<String, String>> newRow = createArtificialRow(dataset);
+            newDataset.put(numNewRow, newRow);
 
-        for (int i = 0; i < newRows; ++i) {
-            Map<String, Double> artificialRow = generateArtificialRow(newDataset);
+            newEigenEntropy = calculateEigenEntropy(newDataset);
 
-            newDataset.put(numRow, artificialRow);
-            double posibleEigenEntropy = calculateEigenEntropy(newDataset);
-            if (posibleEigenEntropy < eigenEntropy) {
-                newEigenEntropy = posibleEigenEntropy;
-                ++numRow;
-            }
-            else {
-                newDataset.remove(numRow);
-                --i;
-            }
+            if (newEigenEntropy > eigenEntropy) ++numNewRow;
+            else newDataset.remove(numNewRow);
         }
 
-        return newEigenEntropy;
+        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    private Map<String, Double> generateArtificialRow(Map<Integer, Map<String, Double>> newDataset) {
-        List<Integer> keys = new ArrayList<>(newDataset.keySet());
-        Integer randomKey = keys.get(new Random().nextInt(keys.size()));
-        Map<String, Double> randomSample = newDataset.get(randomKey);
+    private Map<Integer, Pair<String, String>> createArtificialRow (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+        //Coger dos filas aleatorias del dataset original
+        Random random = new Random();
+        int index1 = random.nextInt(dataset.size()) + 1;
+        int index2 = random.nextInt(dataset.size()) + 1;
+        while (index1 == index2) index2 = random.nextInt(dataset.size()) + 1;
+        Map<Integer, Pair<String, String>> row1 = dataset.get(index1);
+        Map<Integer, Pair<String, String>> row2 = dataset.get(index2);
 
-        int k = 2;
-        List<Map<String, Double>> neighbors = findKNearestNeighbors(newDataset, randomSample, k);
-
-        Map<String, Double> neighborSample = neighbors.get(new Random().nextInt(neighbors.size()));
-
-        return generateNewRow(randomSample, neighborSample);
-    }
-
-    private List<Map<String, Double>> findKNearestNeighbors(Map<Integer, Map<String, Double>> newDataset, Map<String, Double> randomSample, int k) {
-        return newDataset.values().stream()
-                .sorted(Comparator.comparingDouble(s -> calculateEuclideanDistance(randomSample, s)))
-                .limit(k)
-                .collect(Collectors.toList());
-    }
-
-    private double calculateEuclideanDistance(Map<String, Double> sample1, Map<String, Double> sample2) {
-        double sum = 0;
-        for (String key : sample1.keySet()) {
-            double diff = sample1.get(key) - sample2.getOrDefault(key, 0.0);
-            sum += diff * diff;
+        Map<Integer, Pair<String, String>> newRow = new HashMap<>();
+        for (int i = 1; i <= dataset.get(1).size(); ++i) {
+            double newValue = interpolate(Double.parseDouble(row1.get(i).getValue()), Double.parseDouble(row2.get(i).getValue()));
+            Pair<String, String> rowValue = new Pair<>(row1.get(i).getColumn(), String.valueOf(newValue));
+            newRow.put(i, rowValue);
         }
-        return Math.sqrt(sum);
+        return newRow;
     }
 
-    private Map<String, Double> generateNewRow(Map<String, Double> randomSample, Map<String, Double> neighborSample) {
-         Map<String, Double> artificialRow = new LinkedHashMap<>();
-         Random random = new Random();
-         for (String key : randomSample.keySet()) {
-             double diff = neighborSample.get(key) - randomSample.get(key);
-             double gap = random.nextDouble();
-             artificialRow.put(key, randomSample.get(key) + gap * diff);
-         }
-
-         return artificialRow;
-    }*/
+    private double interpolate (double value1, double value2) {
+        Random random = new Random();
+        double lambda = random.nextDouble();
+        return value1 * (1 - lambda) + value2 * lambda;
+    }
     //endregion
 }

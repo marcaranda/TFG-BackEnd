@@ -34,6 +34,13 @@ public class DatasetModel {
         this.rows = rows;
         this.columns = columns;
     }
+
+    public DatasetModel(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName) {
+        this.dataset = dataset;
+        this.eigenEntropy = eigenEntropy;
+        this.userId = userId;
+        this.datasetName = datasetName;
+    }
     //endregion
 
     //region Getters & Setters

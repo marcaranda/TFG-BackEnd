@@ -159,22 +159,22 @@ public class DatasetService {
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numExtraRows) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
         if (improve.equals("Homogeneity") && type.equals("Reduce")) {
             newDataset = entropyService.sampleHomoReduce(datasetModel);
         } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
-            newDataset = entropyService.sampleHomoIncrease(datasetModel);
+            newDataset = entropyService.sampleHomoIncrease(datasetModel, numExtraRows);
         } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
             newDataset = entropyService.sampleHeteReduce(datasetModel);
         } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
-            newDataset = entropyService.sampleHeteIncrease(datasetModel);
+            newDataset = entropyService.sampleHeteIncrease(datasetModel, numExtraRows);
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }
-        return newDataset;
+        return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 
     //region DataBase
