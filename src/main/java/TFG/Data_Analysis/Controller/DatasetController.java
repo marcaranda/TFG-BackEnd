@@ -59,11 +59,11 @@ public class DatasetController {
         return history;
     }
 
-    @GetMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}/numRows/{numRows}")
-    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @PathVariable("numRows") int numExtraRows) throws Exception {
+    @GetMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
+    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @RequestParam(required = false, value = "numInitialRows") int numInitialRows, @RequestParam(value = "numWantedRows") int numWantedRows) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numExtraRows), DatasetDto.class);
+        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numInitialRows, numWantedRows), DatasetDto.class);
     }
     //endregion
     

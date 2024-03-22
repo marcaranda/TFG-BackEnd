@@ -159,18 +159,18 @@ public class DatasetService {
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numExtraRows) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int initialRows, int numWantedRows) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
         if (improve.equals("Homogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHomoReduce(datasetModel);
+            newDataset = entropyService.sampleHomoReduce(datasetModel, initialRows, numWantedRows);
         } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
-            newDataset = entropyService.sampleHomoIncrease(datasetModel, numExtraRows);
+            newDataset = entropyService.sampleHomoIncrease(datasetModel, numWantedRows);
         } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHeteReduce(datasetModel);
+            newDataset = entropyService.sampleHeteReduce(datasetModel, initialRows, numWantedRows);
         } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
-            newDataset = entropyService.sampleHeteIncrease(datasetModel, numExtraRows);
+            newDataset = entropyService.sampleHeteIncrease(datasetModel, numWantedRows);
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }
