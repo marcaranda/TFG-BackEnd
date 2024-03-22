@@ -137,24 +137,46 @@ public class EntropyService {
     }
 
     //Increase number of rows to improve Homogenity
-    public DatasetModel sampleHomoIncrease(DatasetModel datasetModel, int numExtraRows) throws Exception {
+    public DatasetModel sampleHomoIncrease(DatasetModel datasetModel, int numRowsWanted) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = dataset;
-        double eigenEntropy = datasetModel.getEigenEntropy();
+        if (numRowsWanted >= dataset.size()) {
+            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+        }
+
+        initialIndex = new ArrayList<>();
+        end = false;
         double newEigenEntropy = 0;
+        int numDeletedRows = 0;
 
-        int numRows = dataset.size();
-        int numMaxRows = numRows + numExtraRows;
-        int numNewRow = numRows + 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
+        double eigenEntropy = datasetModel.getEigenEntropy();
 
-        while (numNewRow <= numMaxRows){
-            //Map<Integer, Pair<String, String>> newRow = createArtificialRow(dataset);
-            //newDataset.put(numNewRow, newRow);
-            
-            newEigenEntropy = calculateEigenEntropy(newDataset);
-            
-            if (newEigenEntropy < eigenEntropy) ++numNewRow;
-            else newDataset.remove(numNewRow);
+        Random random = new Random();
+        while (numDeletedRows < numRowsWanted && !end) {
+            if (initialIndex.size() >= dataset.size()){
+                end = true;
+            }
+            else {
+                int index = random.nextInt(dataset.size()) + 1;
+                while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
+                initialIndex.add(index);
+
+                Map<Integer, Pair<String, String>> row = dataset.get(index);
+                auxDataset.remove(index);
+
+                newEigenEntropy = calculateEigenEntropy(auxDataset);
+
+                if (newEigenEntropy < eigenEntropy) ++numDeletedRows;
+                else auxDataset.put(index, row);
+            }
+        }
+
+        int numRow = 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+
+        for (Map<Integer, Pair<String, String>> row : auxDataset.values()) {
+            newDataset.put(numRow, row);
+            ++numRow;
         }
 
         return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
@@ -191,24 +213,46 @@ public class EntropyService {
     }
 
     //Increase number of rows to improve Heterogenity
-    public DatasetModel sampleHeteIncrease(DatasetModel datasetModel, int numExtraRows) throws Exception {
+    public DatasetModel sampleHeteIncrease(DatasetModel datasetModel, int numRowsWanted) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = dataset;
-        double eigenEntropy = datasetModel.getEigenEntropy();
+        if (numRowsWanted >= dataset.size()) {
+            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+        }
+
+        initialIndex = new ArrayList<>();
+        end = false;
         double newEigenEntropy = 0;
+        int numDeletedRows = 0;
 
-        int numRows = dataset.size();
-        int numMaxRows = numRows + numExtraRows;
-        int numNewRow = numRows + 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
+        double eigenEntropy = datasetModel.getEigenEntropy();
 
-        while (numNewRow <= numMaxRows){
-            //Map<Integer, Pair<String, String>> newRow = createArtificialRow(dataset);
-            //newDataset.put(numNewRow, newRow);
+        Random random = new Random();
+        while (numDeletedRows < numRowsWanted && !end) {
+            if (initialIndex.size() >= dataset.size()){
+                end = true;
+            }
+            else {
+                int index = random.nextInt(dataset.size()) + 1;
+                while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
+                initialIndex.add(index);
 
-            newEigenEntropy = calculateEigenEntropy(newDataset);
+                Map<Integer, Pair<String, String>> row = dataset.get(index);
+                auxDataset.remove(index);
 
-            if (newEigenEntropy > eigenEntropy) ++numNewRow;
-            else newDataset.remove(numNewRow);
+                newEigenEntropy = calculateEigenEntropy(auxDataset);
+
+                if (newEigenEntropy > eigenEntropy) ++numDeletedRows;
+                else auxDataset.put(index, row);
+            }
+        }
+
+        int numRow = 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+
+        for (Map<Integer, Pair<String, String>> row : auxDataset.values()) {
+            newDataset.put(numRow, row);
+            ++numRow;
         }
 
         return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
