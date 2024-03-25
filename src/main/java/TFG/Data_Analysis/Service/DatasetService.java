@@ -134,47 +134,51 @@ public class DatasetService {
         }
     }
 
-    public DatasetModel applyFilter(List<String> filter, long datasetId) throws Exception {
+    public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
+        System.out.println(rowsWanted);
         DatasetModel datasetModel = getDataset(datasetId);
 
         Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
         int numRow = 1;
-        for (Map<Integer, Pair<String, String>> entry : originalDataset.values()) {
-            Map<Integer, Pair<String, String>> row = new HashMap<>();
-            int numColumn = 1;
-            for (Pair<String, String> subEntry : entry.values()) {
-                if (filter.contains(subEntry.getColumn())) {
-                    Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
-                    row.put(numColumn, rowValue);
-                    ++numColumn;
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : originalDataset.entrySet()) {
+            if (rowsWanted.get(entryRow.getKey() - 1)) {
+                Map<Integer, Pair<String, String>> entry = entryRow.getValue();
+                Map<Integer, Pair<String, String>> row = new HashMap<>();
+                int numColumn = 1;
+                for (Pair<String, String> subEntry : entry.values()) {
+                    if (filter.contains(subEntry.getColumn())) {
+                        Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
+                        row.put(numColumn, rowValue);
+                        ++numColumn;
+                    }
                 }
+                newDataset.put(numRow, row);
+                numRow++;
             }
-            newDataset.put(numRow, row);
-            numRow++;
         }
 
         double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int initialRows, int numWantedRows) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
         if (improve.equals("Homogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHomoReduce(datasetModel);
+            newDataset = entropyService.sampleHomoReduce(datasetModel, initialRows, numWantedRows);
         } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
-            newDataset = entropyService.sampleHomoIncrease(datasetModel);
+            newDataset = entropyService.sampleHomoIncrease(datasetModel, numWantedRows);
         } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHeteReduce(datasetModel);
+            newDataset = entropyService.sampleHeteReduce(datasetModel, initialRows, numWantedRows);
         } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
-            newDataset = entropyService.sampleHeteIncrease(datasetModel);
+            newDataset = entropyService.sampleHeteIncrease(datasetModel, numWantedRows);
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }
-        return newDataset;
+        return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 
     //region DataBase
@@ -304,20 +308,3 @@ public class DatasetService {
     }
     //endregion
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,7 @@
 package TFG.Data_Analysis.Controller;
 
 import TFG.Data_Analysis.Controller.Dto.DatasetDto;
+import TFG.Data_Analysis.Helpers.FilterListDto;
 import TFG.Data_Analysis.Service.DatasetService;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,10 +30,10 @@ public class DatasetController {
     }
 
     @PostMapping(path = "/filter/datasetId/{datasetId}")
-    public DatasetDto applyFilter(@RequestBody List<String> filter, @PathVariable("datasetId") long datasetId) throws Exception {
+    public DatasetDto applyFilter(@RequestBody FilterListDto filterListDto, @PathVariable("datasetId") long datasetId) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.applyFilter(filter, datasetId), DatasetDto.class);
+        return modelMapper.map(datasetService.applyFilter(filterListDto.getTitlesFilter(), filterListDto.getRowsWanted(), datasetId), DatasetDto.class);
     }
     //endregion
 
@@ -60,10 +61,10 @@ public class DatasetController {
     }
 
     @GetMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
-    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type) throws Exception {
+    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @RequestParam(required = false, value = "numInitialRows") int numInitialRows, @RequestParam(value = "numWantedRows") int numWantedRows) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type), DatasetDto.class);
+        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numInitialRows, numWantedRows), DatasetDto.class);
     }
     //endregion
     
