@@ -134,25 +134,29 @@ public class DatasetService {
         }
     }
 
-    public DatasetModel applyFilter(List<String> filter, long datasetId) throws Exception {
+    public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
+        System.out.println(rowsWanted);
         DatasetModel datasetModel = getDataset(datasetId);
 
         Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
         int numRow = 1;
-        for (Map<Integer, Pair<String, String>> entry : originalDataset.values()) {
-            Map<Integer, Pair<String, String>> row = new HashMap<>();
-            int numColumn = 1;
-            for (Pair<String, String> subEntry : entry.values()) {
-                if (filter.contains(subEntry.getColumn())) {
-                    Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
-                    row.put(numColumn, rowValue);
-                    ++numColumn;
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : originalDataset.entrySet()) {
+            if (rowsWanted.get(entryRow.getKey() - 1)) {
+                Map<Integer, Pair<String, String>> entry = entryRow.getValue();
+                Map<Integer, Pair<String, String>> row = new HashMap<>();
+                int numColumn = 1;
+                for (Pair<String, String> subEntry : entry.values()) {
+                    if (filter.contains(subEntry.getColumn())) {
+                        Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
+                        row.put(numColumn, rowValue);
+                        ++numColumn;
+                    }
                 }
+                newDataset.put(numRow, row);
+                numRow++;
             }
-            newDataset.put(numRow, row);
-            numRow++;
         }
 
         double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
@@ -304,20 +308,3 @@ public class DatasetService {
     }
     //endregion
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
