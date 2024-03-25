@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DatasetService {
@@ -116,17 +117,15 @@ public class DatasetService {
         }
     }
 
-    public List<DatasetModel> getHistory(long userId) throws Exception {
+    public List<DatasetModel> getHistory(long userId, String order) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
-            List<DatasetModel> history = new ArrayList<>();
+            List<DatasetModel> history = datasetRepo.findAllByUserId(userId).stream()
+                    .map(elementB -> modelMapper.map(elementB, DatasetModel.class))
+                    .collect(Collectors.toList());
 
-            datasetRepo.findAllByUserId(userId).forEach(elementB -> {
-                DatasetModel datasetModel = modelMapper.map(elementB, DatasetModel.class);
-                //Cargar Datasets sin el contenido por eficiencia de tiempo
-                //datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
-                history.add(datasetModel);
-            });
+            if (order != null && !order.isEmpty()) history = orderHistory(history, order);
+
             return history;
         }
         else {
@@ -305,6 +304,69 @@ public class DatasetService {
 
     private void deleteDatasetMap(List<ObjectId> fileIds) {
         gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileIds)));
+    }
+
+    private List<DatasetModel> orderHistory (List<DatasetModel> history, String order) {
+        List<DatasetModel> orderedHistory = new ArrayList<>();
+
+        switch (order) {
+            case "name" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getDatasetName)
+                            .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "-name" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getDatasetName).reversed()
+                            .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "entropy" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getEigenEntropy).reversed()
+                            .thenComparing(DatasetModel::getDatasetName)
+                            .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "-entropy" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getEigenEntropy)
+                                .thenComparing(DatasetModel::getDatasetName)
+                                .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "row" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getRows).reversed()
+                                .thenComparing(DatasetModel::getDatasetName)
+                                .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "-row" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getRows)
+                                .thenComparing(DatasetModel::getDatasetName)
+                                .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "column" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getColumns).reversed()
+                                .thenComparing(DatasetModel::getDatasetName)
+                                .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+            case "-column" -> {
+                orderedHistory = history.stream()
+                        .sorted(Comparator.comparing(DatasetModel::getColumns)
+                                .thenComparing(DatasetModel::getDatasetName)
+                                .thenComparing(DatasetModel::getVersion))
+                        .collect(Collectors.toList());
+            }
+        }
+
+        return orderedHistory;
     }
     //endregion
 }
