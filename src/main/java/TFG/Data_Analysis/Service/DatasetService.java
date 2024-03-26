@@ -134,7 +134,6 @@ public class DatasetService {
     }
 
     public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
-        System.out.println(rowsWanted);
         DatasetModel datasetModel = getDataset(datasetId);
 
         Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = datasetModel.getDataset();
