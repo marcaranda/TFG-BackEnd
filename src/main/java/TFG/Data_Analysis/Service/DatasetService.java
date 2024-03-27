@@ -136,13 +136,13 @@ public class DatasetService {
     public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
 
-        Map<Integer, Map<Integer, Pair<String, String>>> originalDataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
         int numRow = 1;
-        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : originalDataset.entrySet()) {
-            if (rowsWanted.get(entryRow.getKey() - 1)) {
-                Map<Integer, Pair<String, String>> entry = entryRow.getValue();
+        for (int i = 0; i < rowsWanted.size(); ++i) {
+            if (rowsWanted.get(i)) {
+                Map<Integer, Pair<String, String>> entry = dataset.get(i + 1);
                 Map<Integer, Pair<String, String>> row = new HashMap<>();
                 int numColumn = 1;
                 for (Pair<String, String> subEntry : entry.values()) {
@@ -161,18 +161,18 @@ public class DatasetService {
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int initialRows, int numWantedRows) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, List<Boolean> initialRows) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
-        if (improve.equals("Homogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHomoReduce(datasetModel, initialRows, numWantedRows);
-        } else if (improve.equals("Homogeneity") && type.equals("Increase")) {
-            newDataset = entropyService.sampleHomoIncrease(datasetModel, numWantedRows);
-        } else if (improve.equals("Heterogeneity") && type.equals("Reduce")) {
-            newDataset = entropyService.sampleHeteReduce(datasetModel, initialRows, numWantedRows);
-        } else if (improve.equals("Heterogeneity") && type.equals("Increase")){
-            newDataset = entropyService.sampleHeteIncrease(datasetModel, numWantedRows);
+        if (improve.equals("Homogeneity") && type.equals("Incremental Sampling")) {
+            newDataset = entropyService.sampleHomoIncremental(datasetModel, numInitialRows, numWantedRows, initialRows);
+        } else if (improve.equals("Homogeneity") && type.equals("Elimination Sampling")) {
+            newDataset = entropyService.sampleHomoElimination(datasetModel, numWantedRows);
+        } else if (improve.equals("Heterogeneity") && type.equals("Incremental Sampling")) {
+            newDataset = entropyService.sampleHeteIncremental(datasetModel, numInitialRows, numWantedRows, initialRows);
+        } else if (improve.equals("Heterogeneity") && type.equals("Elimination Sampling")){
+            newDataset = entropyService.sampleHeteElimination(datasetModel, numWantedRows);
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }

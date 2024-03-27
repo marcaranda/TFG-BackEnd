@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,11 +61,11 @@ public class DatasetController {
         return history;
     }
 
-    @GetMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
-    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @RequestParam(required = false, value = "numInitialRows") int numInitialRows, @RequestParam(value = "numWantedRows") int numWantedRows) throws Exception {
+    @PutMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
+    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @RequestParam(value = "numInitialRows") int numInitialRows, @RequestParam(value = "numWantedRows") int numWantedRows, @RequestBody List<Boolean> initialRows) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numInitialRows, numWantedRows), DatasetDto.class);
+        return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numInitialRows, numWantedRows, initialRows), DatasetDto.class);
     }
     //endregion
     

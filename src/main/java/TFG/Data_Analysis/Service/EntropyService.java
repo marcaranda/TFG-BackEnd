@@ -109,7 +109,7 @@ public class EntropyService {
 
     //region Sample
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
-    public DatasetModel sampleHomoReduce(DatasetModel datasetModel, int numInitialRows, int numRowsWanted) throws Exception {
+    public DatasetModel sampleHomoIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
         if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
@@ -121,8 +121,9 @@ public class EntropyService {
         double newEigenEntropy = 0;
         int numNewRow = numInitialRows + 1;
 
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows);
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
         double eigenEntropy = calculateEigenEntropy(auxDataset);
+        double finalEigenEntropy = eigenEntropy;
 
         while (numNewRow <= numRowsWanted && !end) {
             Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
@@ -133,6 +134,7 @@ public class EntropyService {
 
                 if (newEigenEntropy < eigenEntropy) {
                     ++numNewRow;
+                    finalEigenEntropy = newEigenEntropy;
                     //eigenEntropy = newEigenEntropy;
                 }
                 else auxDataset.remove(numNewRow);
@@ -146,13 +148,13 @@ public class EntropyService {
             ++numRow;
         }
 
-        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(newDataset, finalEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
-    public DatasetModel sampleHomoIncrease(DatasetModel datasetModel, int numRowsWanted) throws Exception {
-        //Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> dataset = normalizeMap(datasetModel.getDataset());
+    public DatasetModel sampleHomoElimination(DatasetModel datasetModel, int numRowsWanted) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
         if (numRowsWanted >= dataset.size()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
@@ -160,13 +162,14 @@ public class EntropyService {
         initialIndex = new ArrayList<>();
         end = false;
         double newEigenEntropy = 0;
-        int numDeletedRows = 0;
-
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
         double eigenEntropy = datasetModel.getEigenEntropy();
+        double finalEigenEntropy = eigenEntropy;
+        int numDeletedRows = 0;
+        int numRowsToDelete = dataset.size() - numRowsWanted;
+
 
         Random random = new Random();
-        while (numDeletedRows < numRowsWanted && !end) {
+        while (numDeletedRows < numRowsToDelete && !end) {
             if (initialIndex.size() >= dataset.size()){
                 end = true;
             }
@@ -175,13 +178,14 @@ public class EntropyService {
                 while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
                 initialIndex.add(index);
 
-                Map<Integer, Pair<String, String>> row = dataset.get(index);
+                Map<Integer, Pair<String, String>> row = auxDataset.get(index);
                 auxDataset.remove(index);
 
                 newEigenEntropy = calculateEigenEntropy(auxDataset);
 
                 if (newEigenEntropy < eigenEntropy) {
                     ++numDeletedRows;
+                    finalEigenEntropy = newEigenEntropy;
                     //eigenEntropy = newEigenEntropy;
                 }
                 else auxDataset.put(index, row);
@@ -190,17 +194,16 @@ public class EntropyService {
 
         int numRow = 1;
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
-
-        for (Map<Integer, Pair<String, String>> row : auxDataset.values()) {
-            newDataset.put(numRow, row);
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
+            newDataset.put(numRow, dataset.get(entryRow.getKey()));
             ++numRow;
         }
 
-        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(newDataset, finalEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
-    public DatasetModel sampleHeteReduce(DatasetModel datasetModel, int numInitialRows, int numRowsWanted) throws Exception {
+    public DatasetModel sampleHeteIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
         if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
@@ -212,8 +215,9 @@ public class EntropyService {
         double newEigenEntropy = 0;
         int numNewRow = numInitialRows + 1;
 
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows);
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
         double eigenEntropy = calculateEigenEntropy(auxDataset);
+        double finalEigenEntropy = eigenEntropy;
 
         while (numNewRow <= numRowsWanted && !end) {
             Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
@@ -224,6 +228,7 @@ public class EntropyService {
 
                 if (newEigenEntropy > eigenEntropy) {
                     ++numNewRow;
+                    finalEigenEntropy = newEigenEntropy;
                     //eigenEntropy = newEigenEntropy;
                 }
                 else auxDataset.remove(numNewRow);
@@ -237,13 +242,13 @@ public class EntropyService {
             ++numRow;
         }
 
-        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(newDataset, finalEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
-    public DatasetModel sampleHeteIncrease(DatasetModel datasetModel, int numRowsWanted) throws Exception {
-        //Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> dataset = normalizeMap(datasetModel.getDataset());
+    public DatasetModel sampleHeteElimination(DatasetModel datasetModel, int numRowsWanted) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
         if (numRowsWanted >= dataset.size()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
@@ -251,13 +256,14 @@ public class EntropyService {
         initialIndex = new ArrayList<>();
         end = false;
         double newEigenEntropy = 0;
-        int numDeletedRows = 0;
-
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
         double eigenEntropy = datasetModel.getEigenEntropy();
+        double finalEigenEntropy = eigenEntropy;
+        int numDeletedRows = 0;
+        int numRowsToDelete = dataset.size() - numRowsWanted;
+
 
         Random random = new Random();
-        while (numDeletedRows < numRowsWanted && !end) {
+        while (numDeletedRows < numRowsToDelete && !end) {
             if (initialIndex.size() >= dataset.size()){
                 end = true;
             }
@@ -266,13 +272,14 @@ public class EntropyService {
                 while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
                 initialIndex.add(index);
 
-                Map<Integer, Pair<String, String>> row = dataset.get(index);
+                Map<Integer, Pair<String, String>> row = auxDataset.get(index);
                 auxDataset.remove(index);
 
                 newEigenEntropy = calculateEigenEntropy(auxDataset);
 
                 if (newEigenEntropy > eigenEntropy) {
                     ++numDeletedRows;
+                    finalEigenEntropy = newEigenEntropy;
                     //eigenEntropy = newEigenEntropy;
                 }
                 else auxDataset.put(index, row);
@@ -281,26 +288,47 @@ public class EntropyService {
 
         int numRow = 1;
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
-
-        for (Map<Integer, Pair<String, String>> row : auxDataset.values()) {
-            newDataset.put(numRow, row);
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
+            newDataset.put(numRow, dataset.get(entryRow.getKey()));
             ++numRow;
         }
 
-        return new DatasetModel(newDataset, newEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(newDataset, finalEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int initialRows) {
+    private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int numInitialRows, List<Boolean> initialRows) throws Exception {
         Random random = new Random();
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
-        for (int i = 1; i <= initialRows; ++i) {
+        int numRow = 1;
+        for (int i = 0; i < initialRows.size(); ++i) {
+            if (initialRows.get(i)) {
+                Map<Integer, Pair<String, String>> entry = dataset.get(i + 1);
+                Map<Integer, Pair<String, String>> row = new HashMap<>();
+                int numColumn = 1;
+                for (Pair<String, String> subEntry : entry.values()) {
+                    Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
+                    row.put(numColumn, rowValue);
+                    ++numColumn;
+                }
+                newDataset.put(numRow, row);
+                numRow++;
+                initialIndex.add(i + 1);
+            }
+        }
+
+        if (newDataset.size() > numInitialRows) {
+            throw new Exception("Incorrect number of marked rows");
+        }
+
+        while (numRow <= numInitialRows) {
             int index = random.nextInt(dataset.size()) + 1;
             while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
             initialIndex.add(index);
 
             Map<Integer, Pair<String, String>> row = dataset.get(index);
-            newDataset.put(i, row);
+            newDataset.put(numRow, row);
+            ++numRow;
         }
 
         return newDataset;
@@ -338,7 +366,8 @@ public class EntropyService {
             Map<Integer, Pair<String, String>> row = new HashMap<>();
             int numColumn = 1;
             for (Pair<String, String> subEntry : entry.values()) {
-                double value = (Double.parseDouble(subEntry.getValue()) - min) / (max - min);
+                String stringValue = subEntry.getValue().replaceAll("[^0-9]", "");
+                double value = (Double.parseDouble(stringValue) - min) / (max - min);
                 Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), String.valueOf(value));
                 row.put(numColumn, rowValue);
                 ++numColumn;
