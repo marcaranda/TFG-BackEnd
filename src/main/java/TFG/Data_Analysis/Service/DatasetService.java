@@ -70,7 +70,7 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
+                double eigenEntropy = entropyService.getEigenEntropy(dataset);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
@@ -157,7 +157,7 @@ public class DatasetService {
             }
         }
 
-        double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
+        double eigenEntropy = entropyService.getEigenEntropy(newDataset);
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
@@ -165,6 +165,15 @@ public class DatasetService {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
+        if (type.equals("Incremental Sampling")) {
+            newDataset = entropyService.sampleIncremental(datasetModel, numInitialRows, numWantedRows, initialRows, improve);
+        } else if (type.equals("Elimination Sampling")) {
+            newDataset = entropyService.sampleElimination(datasetModel, numWantedRows, improve);
+        } else {
+            throw new Exception("Incorrect Sample Filter Type");
+        }
+
+        /*
         if (improve.equals("Homogeneity") && type.equals("Incremental Sampling")) {
             newDataset = entropyService.sampleHomoIncremental(datasetModel, numInitialRows, numWantedRows, initialRows);
         } else if (improve.equals("Homogeneity") && type.equals("Elimination Sampling")) {
@@ -175,7 +184,7 @@ public class DatasetService {
             newDataset = entropyService.sampleHeteElimination(datasetModel, numWantedRows);
         } else {
             throw new Exception("Incorrect Sample Filter Type");
-        }
+        }*/
         return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 

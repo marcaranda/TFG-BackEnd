@@ -19,7 +19,12 @@ public class EntropyService {
     private boolean end;
 
     //region Calculate Eigen Entropy
-    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+    public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+        dataset = normalizeMap(dataset);
+        return calculateEigenEntropy(dataset);
+    }
+
+    private double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
 
@@ -108,6 +113,119 @@ public class EntropyService {
     //endregion
 
     //region Sample
+    //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
+    public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
+        if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
+            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+        }
+
+        initialIndex = new ArrayList<>();
+        end = false;
+        double newEigenEntropy = 0;
+        int numNewRow = numInitialRows + 1;
+
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
+        double eigenEntropy = calculateEigenEntropy(auxDataset);
+
+        while (numNewRow <= numRowsWanted && !end) {
+            Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
+            if (newRow != null) {
+                auxDataset.put(numNewRow, newRow);
+
+                newEigenEntropy = calculateEigenEntropy(auxDataset);
+
+                if (improve.equals("Homogeneity")) {
+                    if (newEigenEntropy < eigenEntropy) {
+                        ++numNewRow;
+                        eigenEntropy = newEigenEntropy;
+                    } else {
+                        auxDataset.remove(numNewRow);
+                    }
+                } else if (improve.equals("Heterogeneity")) {
+                    if (newEigenEntropy > eigenEntropy) {
+                        ++numNewRow;
+                        eigenEntropy = newEigenEntropy;
+                    } else {
+                        auxDataset.remove(numNewRow);
+                    }
+                } else {
+                    throw new Exception("Incorrect Sample Filter Type");
+                }
+            }
+        }
+
+        int numRow = 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
+            newDataset.put(numRow, dataset.get(entryRow.getKey()));
+            ++numRow;
+        }
+
+        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+    }
+
+    //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
+    public DatasetModel sampleElimination(DatasetModel datasetModel, int numRowsWanted, String improve) throws Exception {
+        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
+        if (numRowsWanted >= dataset.size()) {
+            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+        }
+
+        initialIndex = new ArrayList<>();
+        end = false;
+        double newEigenEntropy = 0;
+        double eigenEntropy = datasetModel.getEigenEntropy();
+        int numDeletedRows = 0;
+        int numRowsToDelete = dataset.size() - numRowsWanted;
+
+
+        Random random = new Random();
+        while (numDeletedRows < numRowsToDelete && !end) {
+            if (initialIndex.size() >= dataset.size()){
+                end = true;
+            }
+            else {
+                int index = random.nextInt(dataset.size()) + 1;
+                while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
+                initialIndex.add(index);
+
+                Map<Integer, Pair<String, String>> row = auxDataset.get(index);
+                auxDataset.remove(index);
+
+                newEigenEntropy = calculateEigenEntropy(auxDataset);
+
+                if (improve.equals("Homogeneity")) {
+                    if (newEigenEntropy < eigenEntropy) {
+                        ++numDeletedRows;
+                        eigenEntropy = newEigenEntropy;
+                    } else auxDataset.put(index, row);
+                } else if (improve.equals("Heterogeneity")) {
+                    if (newEigenEntropy > eigenEntropy) {
+                        ++numDeletedRows;
+                        eigenEntropy = newEigenEntropy;
+                    }
+                    else auxDataset.put(index, row);
+                } else {
+                    throw new Exception("Incorrect Sample Filter Type");
+                }
+            }
+        }
+
+        int numRow = 1;
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
+            newDataset.put(numRow, dataset.get(entryRow.getKey()));
+            ++numRow;
+        }
+
+        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+    }
+
+    //region Sampleo delete
+    /*
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
     public DatasetModel sampleHomoIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
@@ -294,7 +412,8 @@ public class EntropyService {
         }
 
         return new DatasetModel(newDataset, finalEigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
-    }
+    }*/
+    //endregion
 
     private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int numInitialRows, List<Boolean> initialRows) throws Exception {
         Random random = new Random();
