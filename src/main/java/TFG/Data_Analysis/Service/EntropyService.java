@@ -7,10 +7,15 @@ import org.ejml.dense.row.MatrixFeatures_DDRM;
 import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
 import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
 import org.ejml.simple.SimpleMatrix;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class EntropyService {
@@ -19,12 +24,30 @@ public class EntropyService {
     private boolean end;
 
     //region Calculate Eigen Entropy
+    public double pythonEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+        RestTemplate restTemplate = new RestTemplate();
+        String url = "http://localhost:5000/calculateEE";
+        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<SimpleMatrix> entidad = new HttpEntity<>(dataMatrix, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entidad, String.class);
+            return Double.parseDouble(Objects.requireNonNull(response.getBody()));
+        } catch (HttpClientErrorException ex) {
+            // Manejar aquí el error de cliente HTTP
+            ex.printStackTrace();
+        }
+        return 0;
+    }
+
     public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         dataset = normalizeMap(dataset);
         return calculateEigenEntropy(dataset);
     }
 
-    private double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
 
@@ -38,6 +61,7 @@ public class EntropyService {
         double sum = 0;
         for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
             double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
+            System.out.println(eigenvalue);
             sum += eigenvalue;
         }
 
@@ -54,7 +78,7 @@ public class EntropyService {
         return eigenEntropy;
     }
 
-    private double[][] convertToMatrix (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+    private double[][] convertToMatrix(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
         int numRows = dataset.size();
         int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - 1;
 
@@ -110,6 +134,36 @@ public class EntropyService {
         double covariance = centeredX.dot(centeredY);
         return covariance / (stdDevX * stdDevY);
     }
+
+    private Map<Integer, Map<Integer, Pair<String, String>>> normalizeMap (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+        DoubleSummaryStatistics maxmin = dataset.values().stream()
+                .flatMap(row -> row.entrySet().stream()
+                        .filter(entry -> entry.getKey() > 1)
+                        .map(Map.Entry::getValue))
+                .mapToDouble(pair -> Double.parseDouble(pair.getValue()))
+                .summaryStatistics();
+        double max = maxmin.getMax();
+        double min = maxmin.getMin();
+
+        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        int numRow = 1;
+        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : dataset.entrySet()) {
+            Map<Integer, Pair<String, String>> entry = entryRow.getValue();
+            Map<Integer, Pair<String, String>> row = new HashMap<>();
+            int numColumn = 1;
+            for (Pair<String, String> subEntry : entry.values()) {
+                String stringValue = subEntry.getValue().replaceAll("[^0-9]", "");
+                double value = (Double.parseDouble(stringValue) - min) / (max - min);
+                Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), String.valueOf(value));
+                row.put(numColumn, rowValue);
+                ++numColumn;
+            }
+            newDataset.put(numRow, row);
+            numRow++;
+        }
+
+        return newDataset;
+    }
     //endregion
 
     //region Sample
@@ -130,30 +184,47 @@ public class EntropyService {
         double eigenEntropy = calculateEigenEntropy(auxDataset);
 
         while (numNewRow <= numRowsWanted && !end) {
-            Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
-            if (newRow != null) {
-                auxDataset.put(numNewRow, newRow);
+            Map<Integer, Pair<String, String>> bestRow = new HashMap<>();
+            double bestEigenEntropy = eigenEntropy;
+            int indexBestRow = 0;
+            for (int i = 1; i <= dataset.size(); ++i) {
+                if(!initialIndex.contains(i)) {
+                    Map<Integer, Pair<String, String>> newRow = normDataset.get(i);
+                    //Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
+                    if (newRow != null) {
+                        auxDataset.put(numNewRow, newRow);
 
-                newEigenEntropy = calculateEigenEntropy(auxDataset);
+                        newEigenEntropy = calculateEigenEntropy(auxDataset);
 
-                if (improve.equals("Homogeneity")) {
-                    if (newEigenEntropy < eigenEntropy) {
-                        ++numNewRow;
-                        eigenEntropy = newEigenEntropy;
-                    } else {
+                        if (improve.equals("Homogeneity")) {
+                            if (newEigenEntropy < bestEigenEntropy) {
+                                bestRow = newRow;
+                                bestEigenEntropy = newEigenEntropy;
+                                indexBestRow = i;
+                            }
+                        } else if (improve.equals("Heterogeneity")) {
+                            if (newEigenEntropy > bestEigenEntropy) {
+                                bestRow = newRow;
+                                bestEigenEntropy = newEigenEntropy;
+                                indexBestRow = i;
+                            }
+                        } else {
+                            throw new Exception("Incorrect Sample Filter Type");
+                        }
+
                         auxDataset.remove(numNewRow);
                     }
-                } else if (improve.equals("Heterogeneity")) {
-                    if (newEigenEntropy > eigenEntropy) {
-                        ++numNewRow;
-                        eigenEntropy = newEigenEntropy;
-                    } else {
-                        auxDataset.remove(numNewRow);
-                    }
-                } else {
-                    throw new Exception("Incorrect Sample Filter Type");
                 }
             }
+
+            if (!bestRow.isEmpty()) {
+                auxDataset.put(numNewRow, bestRow);
+                eigenEntropy = bestEigenEntropy;
+                initialIndex.add(indexBestRow);
+                System.out.println(numNewRow);
+                ++numNewRow;
+            }
+            else end = true;
         }
 
         int numRow = 1;
@@ -441,7 +512,8 @@ public class EntropyService {
         }
 
         while (numRow <= numInitialRows) {
-            int index = random.nextInt(dataset.size()) + 1;
+            //int index = random.nextInt(dataset.size()) + 1;
+            int index = numRow;
             while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
             initialIndex.add(index);
 
@@ -466,36 +538,6 @@ public class EntropyService {
             initialIndex.add(index);
             return dataset.get(index);
         }
-    }
-
-    private Map<Integer, Map<Integer, Pair<String, String>>> normalizeMap (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
-        DoubleSummaryStatistics maxmin = dataset.values().stream()
-                .flatMap(row -> row.entrySet().stream()
-                        .filter(entry -> entry.getKey() > 1)
-                        .map(Map.Entry::getValue))
-                .mapToDouble(pair -> Double.parseDouble(pair.getValue()))
-                .summaryStatistics();
-        double max = maxmin.getMax();
-        double min = maxmin.getMin();
-
-        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
-        int numRow = 1;
-        for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : dataset.entrySet()) {
-            Map<Integer, Pair<String, String>> entry = entryRow.getValue();
-            Map<Integer, Pair<String, String>> row = new HashMap<>();
-            int numColumn = 1;
-            for (Pair<String, String> subEntry : entry.values()) {
-                String stringValue = subEntry.getValue().replaceAll("[^0-9]", "");
-                double value = (Double.parseDouble(stringValue) - min) / (max - min);
-                Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), String.valueOf(value));
-                row.put(numColumn, rowValue);
-                ++numColumn;
-            }
-            newDataset.put(numRow, row);
-            numRow++;
-        }
-
-        return newDataset;
     }
     //endregion
 }

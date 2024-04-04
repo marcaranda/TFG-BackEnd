@@ -14,13 +14,20 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.bson.types.ObjectId;
+import org.ejml.simple.SimpleMatrix;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -70,7 +77,9 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = entropyService.getEigenEntropy(dataset);
+                //double eigenEntropy = entropyService.getEigenEntropy(dataset);
+                //double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
+                double eigenEntropy = entropyService.pythonEigenEntropy(dataset);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
@@ -157,7 +166,8 @@ public class DatasetService {
             }
         }
 
-        double eigenEntropy = entropyService.getEigenEntropy(newDataset);
+        //double eigenEntropy = entropyService.getEigenEntropy(newDataset);
+        double eigenEntropy = entropyService.pythonEigenEntropy(dataset);
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
