@@ -171,12 +171,12 @@ public class DatasetService {
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, List<Boolean> initialRows) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
         if (type.equals("Incremental Sampling")) {
-            newDataset = entropyService.sampleIncremental(datasetModel, numInitialRows, numWantedRows, initialRows, improve);
+            newDataset = entropyService.sampleIncremental(datasetModel, numInitialRows, numWantedRows, initialRows, improve, sliderValue);
         } else if (type.equals("Elimination Sampling")) {
             newDataset = entropyService.sampleElimination(datasetModel, numWantedRows, improve);
         } else {

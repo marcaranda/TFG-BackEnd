@@ -168,7 +168,7 @@ public class EntropyService {
 
     //region Sample
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
-    public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve) throws Exception {
+    public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve, double sliderValue) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
         if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
@@ -177,11 +177,11 @@ public class EntropyService {
 
         initialIndex = new ArrayList<>();
         end = false;
-        double newEigenEntropy = 0;
         int numNewRow = numInitialRows + 1;
 
         Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
         double eigenEntropy = calculateEigenEntropy(auxDataset);
+        double initialEigenEntropy = eigenEntropy;
 
         while (numNewRow <= numRowsWanted && !end) {
             Map<Integer, Pair<String, String>> bestRow = new HashMap<>();
@@ -194,7 +194,7 @@ public class EntropyService {
                     if (newRow != null) {
                         auxDataset.put(numNewRow, newRow);
 
-                        newEigenEntropy = calculateEigenEntropy(auxDataset);
+                double newEigenEntropy = calculateEigenEntropy(auxDataset);
 
                         if (improve.equals("Homogeneity")) {
                             if (newEigenEntropy < bestEigenEntropy) {
@@ -216,6 +216,8 @@ public class EntropyService {
                     }
                 }
             }
+
+            if (sliderValue > (initialEigenEntropy / eigenEntropy) * 100) end = true;
 
             if (!bestRow.isEmpty()) {
                 auxDataset.put(numNewRow, bestRow);
