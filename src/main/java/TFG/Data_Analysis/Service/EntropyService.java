@@ -25,9 +25,10 @@ public class EntropyService {
 
     //region Calculate Eigen Entropy
     public double pythonEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
+
         RestTemplate restTemplate = new RestTemplate();
         String url = "http://localhost:5000/calculateEE";
-        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<SimpleMatrix> entidad = new HttpEntity<>(dataMatrix, headers);
@@ -61,7 +62,6 @@ public class EntropyService {
         double sum = 0;
         for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {
             double eigenvalue = eigDecomp.getEigenvalue(i).getReal();
-            System.out.println(eigenvalue);
             sum += eigenvalue;
         }
 
@@ -221,7 +221,6 @@ public class EntropyService {
                 auxDataset.put(numNewRow, bestRow);
                 eigenEntropy = bestEigenEntropy;
                 initialIndex.add(indexBestRow);
-                System.out.println(numNewRow);
                 ++numNewRow;
             }
             else end = true;

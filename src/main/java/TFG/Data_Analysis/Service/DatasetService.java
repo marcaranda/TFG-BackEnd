@@ -78,8 +78,8 @@ public class DatasetService {
                 datasetName = datasetName.replace(".csv", "");
 
                 //double eigenEntropy = entropyService.getEigenEntropy(dataset);
-                //double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
-                double eigenEntropy = entropyService.pythonEigenEntropy(dataset);
+                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
+                //double eigenEntropy = entropyService.pythonEigenEntropy(dataset);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
