@@ -2,6 +2,7 @@ package TFG.Data_Analysis.Controller.Dto;
 
 import TFG.Data_Analysis.Helpers.Pair;
 import org.bson.types.ObjectId;
+import org.ejml.simple.SimpleMatrix;
 
 import java.util.List;
 import java.util.Map;
@@ -9,8 +10,10 @@ import java.util.Map;
 public class DatasetDto {
     //region Dataset Attribute
     private long datasetId;
-    private Map<Integer, Map<Integer, Pair<String, String>>> dataset;
+    private SimpleMatrix dataset;
+    private List<String> headers;
     private List<ObjectId> fileIds;
+    private List<ObjectId> headerIds;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -23,10 +26,12 @@ public class DatasetDto {
     public DatasetDto() {
     }
 
-    public DatasetDto(long datasetId, Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<ObjectId> fileIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
+    public DatasetDto(long datasetId, SimpleMatrix dataset, List<String> headers, List<ObjectId> fileIds, List<ObjectId> headerIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
         this.datasetId = datasetId;
         this.dataset = dataset;
+        this.headers = headers;
         this.fileIds = fileIds;
+        this.headerIds = headerIds;
         this.eigenEntropy = eigenEntropy;
         this.userId = userId;
         this.datasetName = datasetName;
@@ -46,12 +51,20 @@ public class DatasetDto {
         this.datasetId = datasetId;
     }
 
-    public Map<Integer, Map<Integer, Pair<String, String>>> getDataset() {
+    public SimpleMatrix getDataset() {
         return dataset;
     }
 
-    public void setDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+    public void setDataset(SimpleMatrix dataset) {
         this.dataset = dataset;
+    }
+
+    public List<String> getHeaders() {
+        return headers;
+    }
+
+    public void setHeaders(List<String> headers) {
+        this.headers = headers;
     }
 
     public List<ObjectId> getFileIds() {
@@ -60,6 +73,14 @@ public class DatasetDto {
 
     public void setFileIds(List<ObjectId> fileIds) {
         this.fileIds = fileIds;
+    }
+
+    public List<ObjectId> getHeaderIds() {
+        return headerIds;
+    }
+
+    public void setHeaderIds(List<ObjectId> headerIds) {
+        this.headerIds = headerIds;
     }
 
     public double getEigenEntropy() {

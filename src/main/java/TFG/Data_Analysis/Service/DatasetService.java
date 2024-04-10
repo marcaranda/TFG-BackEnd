@@ -1,6 +1,7 @@
 package TFG.Data_Analysis.Service;
 
 import TFG.Data_Analysis.Helpers.Pair;
+import TFG.Data_Analysis.Helpers.SimpleMatrixDeserializer;
 import TFG.Data_Analysis.Repository.DatasetRepo;
 import TFG.Data_Analysis.Repository.Entity.DatasetEntity;
 import TFG.Data_Analysis.Security.TokenValidator;
@@ -8,12 +9,14 @@ import TFG.Data_Analysis.Service.Model.DatasetModel;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.bson.types.ObjectId;
+import org.ejml.simple.SimpleMatrix;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -45,33 +48,31 @@ public class DatasetService {
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
                  CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim());) {
+                List<CSVRecord> rows = csvParser.getRecords();
 
-                Map<Integer, Map<Integer, Pair<String, String>>> dataset = new HashMap<>();
-                int numRow = 1;
+                List<String> headers = csvParser.getHeaderNames();
+                double[][] dataMatrix = new double[rows.size()][csvParser.getHeaderMap().size()];
+                int numRow = 0;
 
-                for (CSVRecord csvRecord : csvParser) {
-                    Map<Integer, Pair<String, String>> row = new HashMap<>();
-                    int numColumn = 1;
-
+                for (CSVRecord csvRecord : rows) {
+                    int numColumn = 0;
                     for (Map.Entry<String, Integer> entry : csvParser.getHeaderMap().entrySet().stream()
                             .sorted(Map.Entry.comparingByValue())
                             .toList()) {
-                        String columnName = entry.getKey();
-                        String columnValue = csvRecord.get(columnName);
-                        // Procesar los datos como se requiera
-                        Pair<String, String> rowValue = new Pair<>(columnName, columnValue);
-                        row.put(numColumn, rowValue);
+                        dataMatrix[numRow][numColumn] = Double.parseDouble(csvRecord.get(entry.getKey()));
                         ++numColumn;
                     }
-                    dataset.put(numRow, row);
                     ++numRow;
                 }
+
+                SimpleMatrix dataset = new SimpleMatrix(dataMatrix);
 
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = entropyService.getEigenEntropy(dataset);
-                return saveDataset(dataset, eigenEntropy, userId, datasetName);
+                //double eigenEntropy = entropyService.getEigenEntropy(dataset);
+                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
+                return saveDataset(dataset, headers, eigenEntropy, userId, datasetName);
             }
         }
         else {
@@ -90,24 +91,24 @@ public class DatasetService {
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
-        Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = datasetModel.getDataset();
+        SimpleMatrix downloadDataset = datasetModel.getDataset();
         StringJoiner csvRow = new StringJoiner(",");
 
             try (PrintWriter csvWriter = response.getWriter()) {
                 // Escribir encabezados de columnas
-                Map<Integer, Pair<String, String>> firstRow = downloadDataset.get(1);
+                /*Map<Integer, Pair<String, String>> firstRow = downloadDataset.get(1);
                 for (Map.Entry<Integer, Pair<String, String>> entry : firstRow.entrySet()) {
                     //csvWriter.append(entry.getValue().getColumn());
                     //csvWriter.append(",");
                     csvRow.add(entry.getValue().getColumn());
                 }
                 csvWriter.append(csvRow.toString());
-                csvWriter.append("\n");
+                csvWriter.append("\n");*/
 
             // Escribir datos
-            for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
-                for (Pair<String, String> rowData : row.values()) {
-                    csvWriter.append(String.valueOf(rowData.getValue()));
+            for (int i = 0; i < downloadDataset.getNumRows(); ++i) {
+                for (int j = 0; j < downloadDataset.getNumCols(); ++i) {
+                    csvWriter.append(String.valueOf(downloadDataset.get(i, j)));
                     csvWriter.append(",");
                 }
                 csvWriter.append("\n");
@@ -136,29 +137,38 @@ public class DatasetService {
     public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
         DatasetModel datasetModel = getDataset(datasetId);
 
-        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
+        SimpleMatrix dataset = datasetModel.getDataset();
+        List<String> headers = datasetModel.getHeaders();
+        List<List<Double>> auxNewDataMatrix = new ArrayList<>();
 
-        int numRow = 1;
-        for (int i = 0; i < rowsWanted.size(); ++i) {
+        for (int i = 0; i < dataset.getNumRows(); ++i) {
             if (rowsWanted.get(i)) {
-                Map<Integer, Pair<String, String>> entry = dataset.get(i + 1);
-                Map<Integer, Pair<String, String>> row = new HashMap<>();
-                int numColumn = 1;
-                for (Pair<String, String> subEntry : entry.values()) {
-                    if (filter.contains(subEntry.getColumn())) {
-                        Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
-                        row.put(numColumn, rowValue);
-                        ++numColumn;
+                List<Double> newRow = new ArrayList<>();
+                for (int j = 0; j < dataset.getNumCols(); ++j) {
+                    if (filter.contains(headers.get(j))) {
+                        newRow.add(dataset.get(i, j));
                     }
                 }
-                newDataset.put(numRow, row);
-                numRow++;
+                if (!newRow.isEmpty()) {
+                    auxNewDataMatrix.add(newRow);
+                }
             }
         }
 
-        double eigenEntropy = entropyService.getEigenEntropy(newDataset);
-        return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        double[][] newDataMatrix = new double[auxNewDataMatrix.size()][];
+        for (int i = 0; i < auxNewDataMatrix.size(); ++i) {
+            List<Double> row = auxNewDataMatrix.get(i);
+            newDataMatrix[i] = new double[row.size()];
+            for (int j = 0; j < row.size(); ++j) {
+                newDataMatrix[i][j] = row.get(j);
+            }
+        }
+
+        SimpleMatrix newDataset = new SimpleMatrix(newDataMatrix);
+
+        //double eigenEntropy = entropyService.getEigenEntropy(newDataset);
+        double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
+        return saveDataset(newDataset, headers, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws Exception {
@@ -185,11 +195,11 @@ public class DatasetService {
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }*/
-        return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
+        return saveDataset(newDataset.getDataset(), datasetModel.getHeaders(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 
     //region DataBase
-    private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
+    private DatasetModel saveDataset(SimpleMatrix dataset, List<String> headers, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
         ModelMapper modelMapper = new ModelMapper();
 
         List<DatasetModel> datasetsVersions = new ArrayList<>();
@@ -206,8 +216,9 @@ public class DatasetService {
         long datasetId = autoIncrementId();
 
         List<ObjectId> fileIds = saveDatasetMap(dataset, datasetId);
+        List<ObjectId> headerIds = saveHeaders(headers, datasetId);
 
-        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, fileIds, eigenEntropy, userId, datasetName, version, dataset.size(), dataset.get(1).size());
+        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, headers, fileIds, headerIds, eigenEntropy, userId, datasetName, version, dataset.getNumRows(), dataset.getNumCols());
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
 
         return datasetModel;
@@ -218,8 +229,8 @@ public class DatasetService {
         DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
         if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
-            //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
+            datasetModel.setHeaders(getHeaders(datasetModel.getHeaderIds()));
             return datasetModel;
         }
         else {
@@ -232,7 +243,6 @@ public class DatasetService {
         DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
         if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
-            //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             deleteDatasetMap(datasetModel.getFileIds());
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
         }
@@ -253,7 +263,7 @@ public class DatasetService {
                 userDatasets.stream().max(Comparator.comparing(DatasetModel::getDatasetId)).get().getDatasetId() + 1;
     }
 
-    private List<ObjectId> saveDatasetMap (Map<Integer, Map<Integer, Pair<String, String>>> dataset, long datasetId) throws JsonProcessingException {
+    private List<ObjectId> saveDatasetMap (SimpleMatrix dataset, long datasetId) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         String json = objectMapper.writeValueAsString(dataset);
         byte[] datasetBytes = json.getBytes(StandardCharsets.UTF_8);
@@ -273,11 +283,33 @@ public class DatasetService {
             offset += chunkSize;
         }
 
-
         return fileIds;
     }
 
-    private Map<Integer, Map<Integer, Pair<String, String>>> getDatasetMap (List<ObjectId> fileIds) {
+    private List<ObjectId> saveHeaders(List<String> headers, long datasetId) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(headers);
+        byte[] datasetBytes = json.getBytes(StandardCharsets.UTF_8);
+
+        final int MAX_SIZE = 16 * 1024 * 1024; //16MB
+        int length = datasetBytes.length;
+        int offset = 0;
+        List<ObjectId> headerIds = new ArrayList<>();
+
+        while (offset < length) {
+            int chunkSize = Math.min(length - offset, MAX_SIZE);
+            byte[] chunk = Arrays.copyOfRange(datasetBytes, offset, offset + chunkSize);
+
+            ObjectId headerId = gridFsTemplate.store(new ByteArrayInputStream(chunk), "header" + Long.toString(datasetId) + "-" + headerIds.size());
+            headerIds.add(headerId);
+
+            offset += chunkSize;
+        }
+
+        return headerIds;
+    }
+
+    private SimpleMatrix getDatasetMap (List<ObjectId> fileIds) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -302,7 +334,41 @@ public class DatasetService {
             String json = baos.toString(StandardCharsets.UTF_8);
 
             ObjectMapper objectMapper = new ObjectMapper();
-            TypeReference<Map<Integer, Map<Integer, Pair<String, String>>>> typeRef = new TypeReference<>() {
+            SimpleModule module = new SimpleModule();
+            module.addDeserializer(SimpleMatrix.class, new SimpleMatrixDeserializer());
+            objectMapper.registerModule(module);
+            return objectMapper.readValue(json, SimpleMatrix.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private List<String> getHeaders (List<ObjectId> headerIds) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            List<GridFSFile> files = new ArrayList<>();
+            for (ObjectId fileId : headerIds) {
+                GridFSFile gridFSFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
+                if (gridFSFile != null) {
+                    files.add(gridFSFile);
+                }
+            }
+
+            for (GridFSFile file : files) {
+                GridFsResource resource = gridFsTemplate.getResource(file);
+                InputStream inputStream = resource.getInputStream();
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    baos.write(buffer, 0, bytesRead);
+                }
+            }
+
+            String json = baos.toString(StandardCharsets.UTF_8);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            TypeReference<List<String>> typeRef = new TypeReference<>() {
             };
             return objectMapper.readValue(json, typeRef);
         } catch (Exception e) {

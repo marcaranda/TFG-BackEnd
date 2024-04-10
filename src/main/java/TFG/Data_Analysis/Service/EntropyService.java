@@ -19,14 +19,13 @@ public class EntropyService {
     private boolean end;
 
     //region Calculate Eigen Entropy
-    public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+    /*public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         dataset = normalizeMap(dataset);
         return calculateEigenEntropy(dataset);
-    }
+    }*/
 
-    private double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
-        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
-        dataMatrix = convertToCorrelationMatrix(dataMatrix);
+    public double calculateEigenEntropy(SimpleMatrix dataset) throws Exception {
+        SimpleMatrix dataMatrix = convertToCorrelationMatrix(dataset);
 
         if (!MatrixFeatures_DDRM.isSymmetric(dataMatrix.getDDRM(), 1e-8)) {
             throw new Exception("La matriz no es simétrica.");
@@ -115,24 +114,25 @@ public class EntropyService {
     //region Sample
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
     public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve, double sliderValue) throws Exception {
-        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
-        if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
+        SimpleMatrix dataset = datasetModel.getDataset();
+        SimpleMatrix normDataset = dataset;
+        //SimpleMatrix normDataset = normalizeMap(datasetModel.getDataset());
+        if (numRowsWanted >= dataset.getNumRows() && numInitialRows >= dataset.getNumRows()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
 
         initialIndex = new ArrayList<>();
         end = false;
-        int numNewRow = numInitialRows + 1;
+        int numNewRow = numInitialRows;
 
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
+        SimpleMatrix auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
         double eigenEntropy = calculateEigenEntropy(auxDataset);
         double initialEigenEntropy = eigenEntropy;
 
         while (numNewRow <= numRowsWanted && !end) {
-            Map<Integer, Pair<String, String>> newRow = getRow(normDataset);
+            SimpleMatrix newRow = getRow(normDataset);
             if (newRow != null) {
-                auxDataset.put(numNewRow, newRow);
+                auxDataset.concatRows(newRow);
 
                 double newEigenEntropy = calculateEigenEntropy(auxDataset);
 
@@ -141,14 +141,14 @@ public class EntropyService {
                         ++numNewRow;
                         eigenEntropy = newEigenEntropy;
                     } else {
-                        auxDataset.remove(numNewRow);
+                        auxDataset = auxDataset.rows(0, auxDataset.getNumRows() - 1);
                     }
                 } else if (improve.equals("Heterogeneity")) {
                     if (newEigenEntropy > eigenEntropy) {
                         ++numNewRow;
                         eigenEntropy = newEigenEntropy;
                     } else {
-                        auxDataset.remove(numNewRow);
+                        auxDataset = auxDataset.rows(0, auxDataset.getNumRows() - 1);
                     }
                 } else {
                     throw new Exception("Incorrect Sample Filter Type");
@@ -158,19 +158,19 @@ public class EntropyService {
             if (sliderValue > (initialEigenEntropy / eigenEntropy) * 100) end = true;
         }
 
-        int numRow = 1;
+        /*int numRow = 1;
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
         for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
             newDataset.put(numRow, dataset.get(entryRow.getKey()));
             ++numRow;
-        }
+        }*/
 
-        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(new SimpleMatrix(auxDataset), eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
     public DatasetModel sampleElimination(DatasetModel datasetModel, int numRowsWanted, String improve) throws Exception {
-        Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
+        /*Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
         if (numRowsWanted >= dataset.size()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
@@ -221,9 +221,9 @@ public class EntropyService {
         for (Map.Entry<Integer, Map<Integer, Pair<String, String>>> entryRow : auxDataset.entrySet()) {
             newDataset.put(numRow, dataset.get(entryRow.getKey()));
             ++numRow;
-        }
+        }*/
 
-        return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return new DatasetModel(new SimpleMatrix(new double[1][1]), datasetModel.getEigenEntropy(), datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     //region Sampleo delete
@@ -417,56 +417,50 @@ public class EntropyService {
     }*/
     //endregion
 
-    private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int numInitialRows, List<Boolean> initialRows) throws Exception {
+    private SimpleMatrix initialReducedDataset(SimpleMatrix dataset, int numInitialRows, List<Boolean> initialRows) throws Exception {
         Random random = new Random();
-        Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
-        int numRow = 1;
-        for (int i = 0; i < initialRows.size(); ++i) {
+        double[][] newDataMatrix = new double[numInitialRows][dataset.getNumCols()];
+
+        int numRow = 0;
+        for (int i = 0; i < dataset.getNumRows(); ++i) {
+            if (numRow >= numInitialRows) {
+                throw new Exception("Incorrect number of marked rows");
+            }
+
             if (initialRows.get(i)) {
-                Map<Integer, Pair<String, String>> entry = dataset.get(i + 1);
-                Map<Integer, Pair<String, String>> row = new HashMap<>();
-                int numColumn = 1;
-                for (Pair<String, String> subEntry : entry.values()) {
-                    Pair<String, String> rowValue = new Pair<>(subEntry.getColumn(), subEntry.getValue());
-                    row.put(numColumn, rowValue);
-                    ++numColumn;
+                for (int j = 0; j < dataset.getNumCols(); ++j) {
+                    newDataMatrix[i][j] = dataset.get(i, j);
                 }
-                newDataset.put(numRow, row);
-                numRow++;
-                initialIndex.add(i + 1);
+                initialIndex.add(i);
+                ++numRow;
             }
         }
 
-        if (newDataset.size() > numInitialRows) {
-            throw new Exception("Incorrect number of marked rows");
-        }
-
-        while (numRow <= numInitialRows) {
-            int index = random.nextInt(dataset.size()) + 1;
-            while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
+        while (numRow < numInitialRows) {
+            int index = random.nextInt(dataset.getNumRows());
+            while (initialIndex.contains(index)) index = random.nextInt(dataset.getNumRows());
             initialIndex.add(index);
 
-            Map<Integer, Pair<String, String>> row = dataset.get(index);
-            newDataset.put(numRow, row);
+            newDataMatrix[numRow] = new double[]{dataset.get(index)};
             ++numRow;
         }
 
-        return newDataset;
+        return new SimpleMatrix(newDataMatrix);
     }
 
-    private Map<Integer, Pair<String, String>> getRow(Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+    private SimpleMatrix getRow(SimpleMatrix dataset) {
         Random random = new Random();
 
-        if (initialIndex.size() >= dataset.size()){
+        if (initialIndex.size() >= dataset.getNumRows()){
             end = true;
             return null;
         }
         else {
-            int index = random.nextInt(dataset.size()) + 1;
-            while (initialIndex.contains(index)) index = random.nextInt(dataset.size()) + 1;
+            int index = random.nextInt(dataset.getNumRows());
+            while (initialIndex.contains(index)) index = random.nextInt(dataset.getNumRows());
             initialIndex.add(index);
-            return dataset.get(index);
+            return dataset.getRow(index);
         }
     }
 
