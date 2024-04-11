@@ -116,7 +116,8 @@ public class EntropyService {
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
     public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve, double sliderValue) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
+        //Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
+        Map<Integer, Map<Integer, Pair<String, String>>> normDataset = dataset;
         if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
@@ -171,7 +172,8 @@ public class EntropyService {
     //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
     public DatasetModel sampleElimination(DatasetModel datasetModel, int numRowsWanted, String improve) throws Exception {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
-        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
+        //Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
+        Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
         if (numRowsWanted >= dataset.size()) {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
