@@ -24,7 +24,7 @@ public class EntropyService {
         return calculateEigenEntropy(dataset);
     }
 
-    private double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
 
@@ -32,7 +32,7 @@ public class EntropyService {
             throw new Exception("La matriz no es simétrica.");
         }
 
-        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
+        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.getNumRows(), true);
         eigDecomp.decompose(dataMatrix.getMatrix());
 
         double sum = 0;

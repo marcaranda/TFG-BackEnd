@@ -70,7 +70,8 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
-                double eigenEntropy = entropyService.getEigenEntropy(dataset);
+                //double eigenEntropy = entropyService.getEigenEntropy(dataset);
+                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName);
             }
         }
@@ -157,7 +158,8 @@ public class DatasetService {
             }
         }
 
-        double eigenEntropy = entropyService.getEigenEntropy(newDataset);
+        //double eigenEntropy = entropyService.getEigenEntropy(dataset);
+        double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
