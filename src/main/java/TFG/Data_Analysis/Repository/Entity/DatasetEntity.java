@@ -15,6 +15,7 @@ public class DatasetEntity {
     private long datasetId;
     private List<ObjectId> fileIds;
     private List<ObjectId> headerIds;
+    private List<ObjectId> idsIds;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -46,6 +47,14 @@ public class DatasetEntity {
 
     public void setHeaderIds(List<ObjectId> headerIds) {
         this.headerIds = headerIds;
+    }
+
+    public List<ObjectId> getIdsIds() {
+        return idsIds;
+    }
+
+    public void setIdsIds(List<ObjectId> idsIds) {
+        this.idsIds = idsIds;
     }
 
     public double getEigenEntropy() {

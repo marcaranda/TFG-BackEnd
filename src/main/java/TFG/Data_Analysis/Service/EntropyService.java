@@ -3,6 +3,7 @@ package TFG.Data_Analysis.Service;
 import TFG.Data_Analysis.Helpers.Exception;
 import TFG.Data_Analysis.Helpers.Pair;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
+import org.ejml.data.Matrix;
 import org.ejml.dense.row.MatrixFeatures_DDRM;
 import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
 import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
@@ -31,8 +32,9 @@ public class EntropyService {
             throw new Exception("La matriz no es simétrica.");
         }
 
-        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.numRows(), true);
+        SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.getNumRows(), true);
         eigDecomp.decompose(dataMatrix.getMatrix());
+        Matrix j = dataMatrix.getMatrix();
 
         double sum = 0;
         for (int i = 0; i < eigDecomp.getNumberOfEigenvalues(); i++) {

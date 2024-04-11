@@ -12,8 +12,10 @@ public class DatasetModel {
     private long datasetId;
     private SimpleMatrix dataset;
     private List<String> headers;
+    private List<String> ids;
     private List<ObjectId> fileIds;
     private List<ObjectId> headerIds;
+    private List<ObjectId> idsIds;
     private double eigenEntropy;
     private long userId;
     private String datasetName;
@@ -26,12 +28,14 @@ public class DatasetModel {
     public DatasetModel() {
     }
 
-    public DatasetModel(long datasetId, SimpleMatrix dataset, List<String> header, List<ObjectId> fileIds, List<ObjectId> headerIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
+    public DatasetModel(long datasetId, SimpleMatrix dataset, List<String> header, List<String> ids, List<ObjectId> fileIds, List<ObjectId> headerIds, List<ObjectId> idsIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
         this.datasetId = datasetId;
         this.dataset = dataset;
         this.headers = header;
+        this.ids = ids;
         this.fileIds = fileIds;
         this.headerIds = headerIds;
+        this.idsIds = idsIds;
         this.eigenEntropy = eigenEntropy;
         this.userId = userId;
         this.datasetName = datasetName;
@@ -73,6 +77,14 @@ public class DatasetModel {
         this.headers = headers;
     }
 
+    public List<String> getIds() {
+        return ids;
+    }
+
+    public void setIds(List<String> ids) {
+        this.ids = ids;
+    }
+
     public List<ObjectId> getFileIds() {
         return fileIds;
     }
@@ -87,6 +99,14 @@ public class DatasetModel {
 
     public void setHeaderIds(List<ObjectId> headersIds) {
         this.headerIds = headersIds;
+    }
+
+    public List<ObjectId> getIdsIds() {
+        return idsIds;
+    }
+
+    public void setIdsIds(List<ObjectId> idsIds) {
+        this.idsIds = idsIds;
     }
 
     public double getEigenEntropy() {

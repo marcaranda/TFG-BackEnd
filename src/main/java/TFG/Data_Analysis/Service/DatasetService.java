@@ -51,6 +51,7 @@ public class DatasetService {
                 List<CSVRecord> rows = csvParser.getRecords();
 
                 List<String> headers = csvParser.getHeaderNames();
+                List<String> ids = new ArrayList<>();
                 double[][] dataMatrix = new double[rows.size()][csvParser.getHeaderMap().size()];
                 int numRow = 0;
 
@@ -59,7 +60,12 @@ public class DatasetService {
                     for (Map.Entry<String, Integer> entry : csvParser.getHeaderMap().entrySet().stream()
                             .sorted(Map.Entry.comparingByValue())
                             .toList()) {
-                        dataMatrix[numRow][numColumn] = Double.parseDouble(csvRecord.get(entry.getKey()));
+                        if (numColumn == 0) {
+                            ids.add(csvRecord.get(entry.getKey()));
+                        }
+                        else {
+                            dataMatrix[numRow][numColumn] = Double.parseDouble(csvRecord.get(entry.getKey()));
+                        }
                         ++numColumn;
                     }
                     ++numRow;
@@ -72,7 +78,7 @@ public class DatasetService {
 
                 //double eigenEntropy = entropyService.getEigenEntropy(dataset);
                 double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
-                return saveDataset(dataset, headers, eigenEntropy, userId, datasetName);
+                return saveDataset(dataset, headers, ids, eigenEntropy, userId, datasetName);
             }
         }
         else {
@@ -168,7 +174,7 @@ public class DatasetService {
 
         //double eigenEntropy = entropyService.getEigenEntropy(newDataset);
         double eigenEntropy = entropyService.calculateEigenEntropy(newDataset);
-        return saveDataset(newDataset, headers, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        return saveDataset(newDataset, headers, datasetModel.getIds(), eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
     public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws Exception {
@@ -195,11 +201,11 @@ public class DatasetService {
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }*/
-        return saveDataset(newDataset.getDataset(), datasetModel.getHeaders(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
+        return saveDataset(newDataset.getDataset(), datasetModel.getHeaders(), datasetModel.getIds(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 
     //region DataBase
-    private DatasetModel saveDataset(SimpleMatrix dataset, List<String> headers, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
+    private DatasetModel saveDataset(SimpleMatrix dataset, List<String> headers, List<String> ids, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
         ModelMapper modelMapper = new ModelMapper();
 
         List<DatasetModel> datasetsVersions = new ArrayList<>();
@@ -216,9 +222,10 @@ public class DatasetService {
         long datasetId = autoIncrementId();
 
         List<ObjectId> fileIds = saveDatasetMap(dataset, datasetId);
-        List<ObjectId> headerIds = saveHeaders(headers, datasetId);
+        List<ObjectId> headerIds = saveList(headers, datasetId, "header");
+        List<ObjectId> idsIds = saveList(ids, datasetId, "ids");
 
-        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, headers, fileIds, headerIds, eigenEntropy, userId, datasetName, version, dataset.getNumRows(), dataset.getNumCols());
+        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, headers, ids, fileIds, headerIds, idsIds, eigenEntropy, userId, datasetName, version, dataset.getNumRows(), dataset.getNumCols());
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
 
         return datasetModel;
@@ -230,7 +237,8 @@ public class DatasetService {
 
         if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
             datasetModel.setDataset(getDatasetMap(datasetModel.getFileIds()));
-            datasetModel.setHeaders(getHeaders(datasetModel.getHeaderIds()));
+            datasetModel.setHeaders(getList(datasetModel.getHeaderIds()));
+            datasetModel.setIds(getList(datasetModel.getIdsIds()));
             return datasetModel;
         }
         else {
@@ -286,7 +294,7 @@ public class DatasetService {
         return fileIds;
     }
 
-    private List<ObjectId> saveHeaders(List<String> headers, long datasetId) throws JsonProcessingException {
+    private List<ObjectId> saveList(List<String> headers, long datasetId, String type) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         String json = objectMapper.writeValueAsString(headers);
         byte[] datasetBytes = json.getBytes(StandardCharsets.UTF_8);
@@ -294,19 +302,19 @@ public class DatasetService {
         final int MAX_SIZE = 16 * 1024 * 1024; //16MB
         int length = datasetBytes.length;
         int offset = 0;
-        List<ObjectId> headerIds = new ArrayList<>();
+        List<ObjectId> ids = new ArrayList<>();
 
         while (offset < length) {
             int chunkSize = Math.min(length - offset, MAX_SIZE);
             byte[] chunk = Arrays.copyOfRange(datasetBytes, offset, offset + chunkSize);
 
-            ObjectId headerId = gridFsTemplate.store(new ByteArrayInputStream(chunk), "header" + Long.toString(datasetId) + "-" + headerIds.size());
-            headerIds.add(headerId);
+            ObjectId headerId = gridFsTemplate.store(new ByteArrayInputStream(chunk), type + Long.toString(datasetId) + "-" + ids.size());
+            ids.add(headerId);
 
             offset += chunkSize;
         }
 
-        return headerIds;
+        return ids;
     }
 
     private SimpleMatrix getDatasetMap (List<ObjectId> fileIds) {
@@ -343,12 +351,12 @@ public class DatasetService {
         }
     }
 
-    private List<String> getHeaders (List<ObjectId> headerIds) {
+    private List<String> getList(List<ObjectId> listIds) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             List<GridFSFile> files = new ArrayList<>();
-            for (ObjectId fileId : headerIds) {
+            for (ObjectId fileId : listIds) {
                 GridFSFile gridFSFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
                 if (gridFSFile != null) {
                     files.add(gridFSFile);
