@@ -55,30 +55,6 @@ public class EntropyService {
         return eigenEntropy;
     }
 
-    private double[][] convertToMatrix (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
-        int numRows = dataset.size();
-        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - 1;
-
-        double[][] dataMatrix = new double[numRows][numColumns];
-
-        int row = 0;
-        for (Map<Integer, Pair<String, String>> entry : dataset.values()) {
-            int column = 0;
-            for (Pair<String, String> value : entry.values()) {
-                if (column > 0) {
-                    if (value.getValue() != null ) {
-                        dataMatrix[row][column - 1] = Double.parseDouble(value.getValue());
-                    }
-                }
-                ++column;
-            }
-            ++row;
-        }
-
-
-        return dataMatrix;
-    }
-
     private SimpleMatrix convertToCorrelationMatrix (SimpleMatrix dataMatrix) {
         int numCols = dataMatrix.getNumCols();
         SimpleMatrix correlationMatrix = new SimpleMatrix(numCols, numCols);

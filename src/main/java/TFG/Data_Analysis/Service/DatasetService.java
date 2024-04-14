@@ -56,17 +56,19 @@ public class DatasetService {
                 int numRow = 0;
 
                 for (CSVRecord csvRecord : rows) {
+                    boolean firstRow = false;
                     int numColumn = 0;
                     for (Map.Entry<String, Integer> entry : csvParser.getHeaderMap().entrySet().stream()
                             .sorted(Map.Entry.comparingByValue())
                             .toList()) {
-                        if (numColumn == 0) {
+                        if (!firstRow) {
                             ids.add(csvRecord.get(entry.getKey()));
+                            firstRow = true;
                         }
                         else {
                             dataMatrix[numRow][numColumn] = Double.parseDouble(csvRecord.get(entry.getKey()));
+                            ++numColumn;
                         }
-                        ++numColumn;
                     }
                     ++numRow;
                 }
