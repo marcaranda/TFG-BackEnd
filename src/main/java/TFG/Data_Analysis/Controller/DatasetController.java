@@ -52,9 +52,9 @@ public class DatasetController {
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
-    public List<DatasetDto> getHistory(@PathVariable("userId") long userId, @RequestParam(required = false, value = "orderBy") String order) throws Exception {
+    public List<DatasetDto> getHistory(@PathVariable("userId") long userId, @RequestParam(required = false, value = "orderBy") String order, @RequestParam(required = false, value = "search") String search) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
-        List<DatasetDto> history = datasetService.getHistory(userId, order).stream()
+        List<DatasetDto> history = datasetService.getHistory(userId, order, search).stream()
                 .map(elementB -> modelMapper.map(elementB, DatasetDto.class))
                 .collect(Collectors.toList());
 

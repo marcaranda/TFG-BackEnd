@@ -118,7 +118,7 @@ public class DatasetService {
         }
     }
 
-    public List<DatasetModel> getHistory(long userId, String order) throws Exception {
+    public List<DatasetModel> getHistory(long userId, String order, String search) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
             List<DatasetModel> history = datasetRepo.findAllByUserId(userId).stream()
@@ -126,6 +126,7 @@ public class DatasetService {
                     .collect(Collectors.toList());
 
             if (order != null && !order.isEmpty()) history = orderHistory(history, order);
+            if (search != null && !search.isEmpty()) history = searchHistory(history, search);
 
             return history;
         }
@@ -376,6 +377,18 @@ public class DatasetService {
         }
 
         return orderedHistory;
+    }
+
+    private List<DatasetModel> searchHistory (List<DatasetModel> history, String search) {
+        List<DatasetModel> searchedHistory = new ArrayList<>();
+
+        String searchLowerCase = search.toLowerCase();
+
+        searchedHistory = history.stream()
+                .filter(b -> b.getDatasetName().toLowerCase().startsWith(search))
+                .collect(Collectors.toList());
+
+        return searchedHistory;
     }
     //endregion
 }
