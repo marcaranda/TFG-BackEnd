@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -52,11 +53,17 @@ public class DatasetController {
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
-    public List<DatasetDto> getHistory(@PathVariable("userId") long userId, @RequestParam(required = false, value = "orderBy") String order, @RequestParam(required = false, value = "search") String search) throws Exception {
+    public Map<String, List<DatasetDto>> getHistory(@PathVariable("userId") long userId, @RequestParam(required = false, value = "orderBy") String order,
+                                                    @RequestParam(required = false, value = "search") String search,
+                                                    @RequestParam(required = false, value = "datasetName") String datasetName) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
-        List<DatasetDto> history = datasetService.getHistory(userId, order, search).stream()
-                .map(elementB -> modelMapper.map(elementB, DatasetDto.class))
-                .collect(Collectors.toList());
+        Map<String, List<DatasetDto>> history = datasetService.getHistory(userId, order, search, datasetName).entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> entry.getValue().stream()
+                    .map(model -> modelMapper.map(model, DatasetDto.class))
+                    .collect(Collectors.toList())
+            ));
 
         return history;
     }

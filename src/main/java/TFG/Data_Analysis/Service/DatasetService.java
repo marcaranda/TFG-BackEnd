@@ -118,15 +118,26 @@ public class DatasetService {
         }
     }
 
-    public List<DatasetModel> getHistory(long userId, String order, String search) throws Exception {
+    public  Map<String, List<DatasetModel>> getHistory(long userId, String order, String search, String datasetName) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
-            List<DatasetModel> history = datasetRepo.findAllByUserId(userId).stream()
+            List<DatasetModel> datasets = datasetRepo.findAllByUserId(userId).stream()
                     .map(elementB -> modelMapper.map(elementB, DatasetModel.class))
                     .collect(Collectors.toList());
 
-            if (order != null && !order.isEmpty()) history = orderHistory(history, order);
-            if (search != null && !search.isEmpty()) history = searchHistory(history, search);
+            Map<String, List<DatasetModel>> history = datasets.stream()
+                    .collect(Collectors.groupingBy(DatasetModel::getDatasetName));
+
+            if (datasetName != null && !datasetName.isEmpty()) {
+                Map <String, List<DatasetModel>> aux = new HashMap<>();
+
+
+                if (order != null && !order.isEmpty()) aux.put(datasetName, orderHistory(history.get(datasetName), order));
+                else aux.put(datasetName, history.get(datasetName));
+
+                history = aux;
+            }
+            else if (search != null && !search.isEmpty()) history = searchHistory(history, search);
 
             return history;
         }
@@ -175,19 +186,6 @@ public class DatasetService {
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }
-
-        /*
-        if (improve.equals("Homogeneity") && type.equals("Incremental Sampling")) {
-            newDataset = entropyService.sampleHomoIncremental(datasetModel, numInitialRows, numWantedRows, initialRows);
-        } else if (improve.equals("Homogeneity") && type.equals("Elimination Sampling")) {
-            newDataset = entropyService.sampleHomoElimination(datasetModel, numWantedRows);
-        } else if (improve.equals("Heterogeneity") && type.equals("Incremental Sampling")) {
-            newDataset = entropyService.sampleHeteIncremental(datasetModel, numInitialRows, numWantedRows, initialRows);
-        } else if (improve.equals("Heterogeneity") && type.equals("Elimination Sampling")){
-            newDataset = entropyService.sampleHeteElimination(datasetModel, numWantedRows);
-        } else {
-            throw new Exception("Incorrect Sample Filter Type");
-        }*/
         return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
     }
 
@@ -329,7 +327,7 @@ public class DatasetService {
             case "-name" -> {
                 orderedHistory = history.stream()
                         .sorted(Comparator.comparing(DatasetModel::getDatasetName).reversed()
-                            .thenComparing(DatasetModel::getVersion))
+                            .thenComparing(DatasetModel::getVersion).reversed())
                         .collect(Collectors.toList());
             }
             case "entropy" -> {
@@ -379,14 +377,16 @@ public class DatasetService {
         return orderedHistory;
     }
 
-    private List<DatasetModel> searchHistory (List<DatasetModel> history, String search) {
-        List<DatasetModel> searchedHistory = new ArrayList<>();
+    private Map<String, List<DatasetModel>> searchHistory (Map<String, List<DatasetModel>> history, String search) {
+        Map<String, List<DatasetModel>> searchedHistory = new HashMap<>();
 
         String searchLowerCase = search.toLowerCase();
 
-        searchedHistory = history.stream()
-                .filter(b -> b.getDatasetName().toLowerCase().startsWith(search))
-                .collect(Collectors.toList());
+        for (Map.Entry<String, List<DatasetModel>> entry : history.entrySet()) {
+            if (entry.getKey().toLowerCase().startsWith(searchLowerCase)) {
+                searchedHistory.put(entry.getKey(), entry.getValue());
+            }
+        }
 
         return searchedHistory;
     }
