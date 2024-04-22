@@ -37,7 +37,7 @@ public class DatasetService {
     @Autowired
     GridFsTemplate gridFsTemplate;
 
-    public DatasetModel fileReader(MultipartFile file, long userId) throws Exception {
+    public DatasetModel fileReader(MultipartFile file, long userId, String rowsDenied) throws Exception {
         if(new TokenValidator().validate_id_with_token(userId)) {
             if (file.isEmpty()) {
                 throw new Exception("No file provided or the file was empty.");
@@ -70,9 +70,15 @@ public class DatasetService {
                 String datasetName = file.getOriginalFilename();
                 datasetName = datasetName.replace(".csv", "");
 
+                String[] rowsSeparated = rowsDenied.replaceAll("[^0-9,]", "").split(",");
+                List<Integer> rowsToDenie = new ArrayList<>();
+                for (String number : rowsSeparated) {
+                    rowsToDenie.add(Integer.parseInt(number));
+                }
+
                 //double eigenEntropy = entropyService.getEigenEntropy(dataset);
-                double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
-                return saveDataset(dataset, eigenEntropy, userId, datasetName);
+                double eigenEntropy = entropyService.calculateEigenEntropy(dataset, rowsToDenie, false);
+                return saveDataset(dataset, eigenEntropy, userId, datasetName, rowsToDenie);
             }
         }
         else {
@@ -123,7 +129,7 @@ public class DatasetService {
             ModelMapper modelMapper = new ModelMapper();
             List<DatasetModel> datasets = datasetRepo.findAllByUserId(userId).stream()
                     .map(elementB -> modelMapper.map(elementB, DatasetModel.class))
-                    .collect(Collectors.toList());
+                    .toList();
 
             Map<String, List<DatasetModel>> history = datasets.stream()
                     .collect(Collectors.groupingBy(DatasetModel::getDatasetName));
@@ -171,8 +177,8 @@ public class DatasetService {
         }
 
         //double eigenEntropy = entropyService.getEigenEntropy(dataset);
-        double eigenEntropy = entropyService.calculateEigenEntropy(dataset);
-        return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
+        double eigenEntropy = entropyService.calculateEigenEntropy(newDataset, datasetModel.getRowsDenied(), true);
+        return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName(), new ArrayList<>());
     }
 
     public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws Exception {
@@ -186,11 +192,11 @@ public class DatasetService {
         } else {
             throw new Exception("Incorrect Sample Filter Type");
         }
-        return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName());
+        return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName(), datasetModel.getRowsDenied());
     }
 
     //region DataBase
-    private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName) throws JsonProcessingException {
+    private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName, List<Integer> rowsDenied) throws JsonProcessingException {
         ModelMapper modelMapper = new ModelMapper();
 
         List<DatasetModel> datasetsVersions = new ArrayList<>();
@@ -208,7 +214,7 @@ public class DatasetService {
 
         List<ObjectId> fileIds = saveDatasetMap(dataset, datasetId);
 
-        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, fileIds, eigenEntropy, userId, datasetName, version, dataset.size(), dataset.get(1).size());
+        DatasetModel datasetModel = new DatasetModel(datasetId, dataset, fileIds, eigenEntropy, userId, datasetName, version, dataset.size(), dataset.get(1).size(), rowsDenied);
         datasetRepo.save(modelMapper.map(datasetModel, DatasetEntity.class));
 
         return datasetModel;
@@ -233,7 +239,6 @@ public class DatasetService {
         DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
         if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
-            //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
             deleteDatasetMap(datasetModel.getFileIds());
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
         }

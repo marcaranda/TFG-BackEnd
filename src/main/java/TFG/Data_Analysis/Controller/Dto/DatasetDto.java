@@ -17,13 +17,14 @@ public class DatasetDto {
     private long version;
     private int rows;
     private int columns;
+    private List<Integer> rowsDenied;
     //endregion
 
     //region Constructor
     public DatasetDto() {
     }
 
-    public DatasetDto(long datasetId, Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<ObjectId> fileIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns) {
+    public DatasetDto(long datasetId, Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<ObjectId> fileIds, double eigenEntropy, long userId, String datasetName, long version, int rows, int columns, List<Integer> rowsDenied) {
         this.datasetId = datasetId;
         this.dataset = dataset;
         this.fileIds = fileIds;
@@ -33,6 +34,7 @@ public class DatasetDto {
         this.version = version;
         this.rows = rows;
         this.columns = columns;
+        this.rowsDenied = rowsDenied;
     }
 
     //endregion
@@ -109,5 +111,14 @@ public class DatasetDto {
     public void setColumns(int columns) {
         this.columns = columns;
     }
+
+    public List<Integer> getRowsDenied() {
+        return rowsDenied;
+    }
+
+    public void setRowsDenied(List<Integer> rowsDenied) {
+        this.rowsDenied = rowsDenied;
+    }
+
     //endregion
 }

@@ -3,6 +3,7 @@ package TFG.Data_Analysis.Service;
 import TFG.Data_Analysis.Helpers.Exception;
 import TFG.Data_Analysis.Helpers.Pair;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.ejml.dense.row.MatrixFeatures_DDRM;
 import org.ejml.dense.row.decomposition.eig.SwitchingEigenDecomposition_DDRM;
 import org.ejml.dense.row.factory.DecompositionFactory_DDRM;
@@ -19,13 +20,15 @@ public class EntropyService {
     private boolean end;
 
     //region Calculate Eigen Entropy
-    public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
+    /*public double getEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
         dataset = normalizeMap(dataset);
         return calculateEigenEntropy(dataset);
-    }
+    }*/
 
-    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset) throws Exception {
-        SimpleMatrix dataMatrix = new SimpleMatrix(convertToMatrix(dataset));
+    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<Integer> rowsDenied, Boolean filter) throws Exception {
+        SimpleMatrix dataMatrix;
+        if (!filter) dataMatrix = new SimpleMatrix(convertToMatrix(dataset, rowsDenied));
+        else dataMatrix = new SimpleMatrix(convertToMatrixFilter(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
 
         if (!MatrixFeatures_DDRM.isSymmetric(dataMatrix.getDDRM(), 1e-8)) {
@@ -54,9 +57,34 @@ public class EntropyService {
         return eigenEntropy;
     }
 
-    private double[][] convertToMatrix (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+    private double[][] convertToMatrix (Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<Integer> rowsDenied) {
         int numRows = dataset.size();
-        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - 1;
+        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size() - rowsDenied.size();
+
+        double[][] dataMatrix = new double[numRows][numColumns];
+
+        int row = 0;
+        for (Map<Integer, Pair<String, String>> entry : dataset.values()) {
+            int column = 0;
+            int columnNumber = 0;
+            for (Pair<String, String> value : entry.values()) {
+                if (rowsDenied.isEmpty() || !rowsDenied.contains(columnNumber + 1)) {
+                    if (value.getValue() != null ) {
+                        dataMatrix[row][column] = Double.parseDouble(value.getValue());
+                    }
+                    ++column;
+                }
+                ++columnNumber;
+            }
+            ++row;
+        }
+
+        return dataMatrix;
+    }
+
+    private double[][] convertToMatrixFilter (Map<Integer, Map<Integer, Pair<String, String>>> dataset) {
+        int numRows = dataset.size();
+        int numColumns = dataset.isEmpty() ? 0 : dataset.entrySet().iterator().next().getValue().size();
 
         double[][] dataMatrix = new double[numRows][numColumns];
 
@@ -64,16 +92,13 @@ public class EntropyService {
         for (Map<Integer, Pair<String, String>> entry : dataset.values()) {
             int column = 0;
             for (Pair<String, String> value : entry.values()) {
-                if (column > 0) {
-                    if (value.getValue() != null ) {
-                        dataMatrix[row][column - 1] = Double.parseDouble(value.getValue());
-                    }
+                if (value.getValue() != null ) {
+                    dataMatrix[row][column] = Double.parseDouble(value.getValue());
                 }
                 ++column;
             }
             ++row;
         }
-
 
         return dataMatrix;
     }
@@ -122,12 +147,13 @@ public class EntropyService {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
 
+        List<Integer> rowsDenied = datasetModel.getRowsDenied();
         initialIndex = new ArrayList<>();
         end = false;
         int numNewRow = numInitialRows + 1;
 
         Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = initialReducedDataset(normDataset, numInitialRows, initialRows);
-        double eigenEntropy = calculateEigenEntropy(auxDataset);
+        double eigenEntropy = calculateEigenEntropy(auxDataset, rowsDenied, false);
         double initialEigenEntropy = eigenEntropy;
 
         while (numNewRow <= numRowsWanted && !end) {
@@ -135,7 +161,7 @@ public class EntropyService {
             if (newRow != null) {
                 auxDataset.put(numNewRow, newRow);
 
-                double newEigenEntropy = calculateEigenEntropy(auxDataset);
+                double newEigenEntropy = calculateEigenEntropy(auxDataset, rowsDenied, false);
 
                 if (improve.equals("Homogeneity")) {
                     if (newEigenEntropy < eigenEntropy) {
@@ -178,6 +204,7 @@ public class EntropyService {
             throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
         }
 
+        List<Integer> rowsDenied = datasetModel.getRowsDenied();
         initialIndex = new ArrayList<>();
         end = false;
         double newEigenEntropy = 0;
@@ -199,7 +226,7 @@ public class EntropyService {
                 Map<Integer, Pair<String, String>> row = auxDataset.get(index);
                 auxDataset.remove(index);
 
-                newEigenEntropy = calculateEigenEntropy(auxDataset);
+                newEigenEntropy = calculateEigenEntropy(auxDataset, rowsDenied, false);
 
                 if (improve.equals("Homogeneity")) {
                     if (newEigenEntropy < eigenEntropy) {
