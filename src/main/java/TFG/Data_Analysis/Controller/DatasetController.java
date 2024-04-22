@@ -24,11 +24,11 @@ public class DatasetController {
     DatasetService datasetService;
 
     //region Post Methods
-    @PostMapping(path = "userId/{userId}")
-    public DatasetDto fileReaderCSV(@RequestBody MultipartFile file, @PathVariable("userId") long userId) throws Exception {
+    @PostMapping(path = "userId/{userId}/rows/{rowsDenied}")
+    public DatasetDto fileReaderCSV(@RequestBody MultipartFile file, @PathVariable("userId") long userId, @PathVariable("rowsDenied") String rowsDenied) throws Exception {
         ModelMapper modelMapper = new ModelMapper();
 
-        return modelMapper.map(datasetService.fileReader(file, userId), DatasetDto.class);
+        return modelMapper.map(datasetService.fileReader(file, userId, rowsDenied), DatasetDto.class);
     }
 
     @PostMapping(path = "/filter/datasetId/{datasetId}")

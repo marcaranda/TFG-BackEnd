@@ -20,6 +20,7 @@ public class DatasetEntity {
     private long version;
     private int rows;
     private int columns;
+    private List<Integer> rowsDenied;
     //endregion
 
     //region Getters & Setters
@@ -85,6 +86,14 @@ public class DatasetEntity {
 
     public void setColumns(int columns) {
         this.columns = columns;
+    }
+
+    public List<Integer> getRowsDenied() {
+        return rowsDenied;
+    }
+
+    public void setRowsDenied(List<Integer> rowsDenied) {
+        this.rowsDenied = rowsDenied;
     }
     //endregion
 }
