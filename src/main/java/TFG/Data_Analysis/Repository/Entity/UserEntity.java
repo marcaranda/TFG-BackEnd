@@ -1,24 +1,17 @@
 package TFG.Data_Analysis.Repository.Entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "Users")
+@Document(collection = "Users")
 public class UserEntity {
     //region User Attribute
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(unique = true, nullable = false)
     private long user_id;
-    @Column (nullable = false)
     private String name;
-    @Column (unique = true, nullable = false)
     private String email;
-    @Column (nullable = false)
     private String password;
-    @Column (nullable = false, columnDefinition = "boolean default false" )
     private boolean deleted;
-    @Column (unique = true)
     private String phone;
     //endregion
 

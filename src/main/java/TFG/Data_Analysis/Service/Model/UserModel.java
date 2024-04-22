@@ -1,7 +1,5 @@
 package TFG.Data_Analysis.Service.Model;
 
-import jakarta.persistence.Column;
-
 public class UserModel {
     //region User Attribute
     private long user_id;
