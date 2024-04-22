@@ -1,12 +1,10 @@
 package TFG.Data_Analysis.Repository.Entity;
 
-import TFG.Data_Analysis.Helpers.Pair;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
-import java.util.Map;
 
 @Document(collection = "Datasets")
 public class DatasetEntity {

@@ -4,6 +4,7 @@ import TFG.Data_Analysis.Helpers.Exception;
 import TFG.Data_Analysis.Repository.Entity.UserEntity;
 import TFG.Data_Analysis.Repository.UserRepo;
 import TFG.Data_Analysis.Security.TokenValidator;
+import TFG.Data_Analysis.Service.Model.DatasetModel;
 import TFG.Data_Analysis.Service.Model.UserModel;
 import org.mindrot.jbcrypt.BCrypt;
 import org.modelmapper.ModelMapper;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,15 +25,6 @@ import java.util.regex.Pattern;
 public class UserService {
     @Autowired
     UserRepo userRepo;
-
-    /*
-    if(new TokenValidator().validate_id_with_token(user_id)) {
-     --------
-    }
-    else {
-        throw new OurException("El user_id enviado es diferente al especificado en el token");
-    }
-     */
 
     //region Get Methods
     public ArrayList<UserModel> getUsers() throws Exception {
@@ -72,8 +66,19 @@ public class UserService {
         /* Encriptado de contraseña -- IMPORTANTE: Al hacer log-in, tenemos que comparar la contraseña introducida con la encriptada en la BD. Para ello,
         usamos la función checkpw(psw, pswCryp) de la clase BCrypt, pero antes tenemos que encriptar la contraseña introducida por el usuario.*/
         user.setPassword(encryptPassowrd(user.getPassword()));
+        user.setUser_id(autoIncrement());
 
         return modelMapper.map(userRepo.save(modelMapper.map(user, UserEntity.class)), UserModel.class);
+    }
+
+    private long autoIncrement(){
+        ModelMapper modelMapper = new ModelMapper();
+        List<UserModel> userDatasets = new ArrayList<>();
+
+        userRepo.findAll().forEach(elementB -> userDatasets.add(modelMapper.map(elementB, UserModel.class)));
+
+        return userDatasets.isEmpty() ? 1 :
+                userDatasets.stream().max(Comparator.comparing(UserModel::getUser_id)).get().getUser_id() + 1;
     }
 
     public UserModel editUser(UserModel user) throws Exception {
