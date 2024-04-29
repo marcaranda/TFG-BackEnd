@@ -1,5 +1,9 @@
 package TFG.Data_Analysis.Service;
 
+import TFG.Data_Analysis.Helpers.Error.BadRequest;
+import TFG.Data_Analysis.Helpers.Error.Forbidden;
+import TFG.Data_Analysis.Helpers.Error.NotFound;
+import TFG.Data_Analysis.Helpers.Error.ServerConflict;
 import TFG.Data_Analysis.Helpers.Pair;
 import TFG.Data_Analysis.Repository.DatasetRepo;
 import TFG.Data_Analysis.Repository.Entity.DatasetEntity;
@@ -37,10 +41,10 @@ public class DatasetService {
     @Autowired
     GridFsTemplate gridFsTemplate;
 
-    public DatasetModel fileReader(MultipartFile file, long userId, String rowsDenied) throws Exception {
+    public DatasetModel fileReader(MultipartFile file, long userId, String rowsDenied) throws Forbidden, BadRequest, ServerConflict {
         if(new TokenValidator().validate_id_with_token(userId)) {
             if (file.isEmpty()) {
-                throw new Exception("No file provided or the file was empty.");
+                throw new BadRequest("No file provided or the file was empty.");
             }
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
@@ -80,25 +84,30 @@ public class DatasetService {
                 double eigenEntropy = entropyService.calculateEigenEntropy(dataset, rowsToDenie, false);
                 return saveDataset(dataset, eigenEntropy, userId, datasetName, rowsToDenie);
             }
+            catch (Exception e) {
+                throw new ServerConflict("Error while reading the file");
+            }
         }
         else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
+            throw new Forbidden("El user_id enviado es diferente al especificado en el token");
         }
     }
 
-    public void downloadFile(long datasetId, HttpServletResponse response) throws Exception {
+    public void downloadFile(long datasetId, HttpServletResponse response) throws Forbidden, NotFound, ServerConflict {
         DatasetModel datasetModel = getDataset(datasetId);
         if (datasetModel == null) {
-            throw new Exception("La versión solicitada no existe.");
+            throw new NotFound("La versión solicitada no existe.");
         }
 
-        String fileName = datasetModel.getVersion() == 0 ? datasetModel.getDatasetName() + ".csv" : datasetModel.getDatasetName() + "_" + datasetModel.getVersion() + ".csv";
-        // Configurar la respuesta para descargar el archivo
-        response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+        if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
 
-        Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = datasetModel.getDataset();
-        StringJoiner csvRow = new StringJoiner(",");
+            String fileName = datasetModel.getVersion() == 0 ? datasetModel.getDatasetName() + ".csv" : datasetModel.getDatasetName() + "_" + datasetModel.getVersion() + ".csv";
+            // Configurar la respuesta para descargar el archivo
+            response.setContentType("text/csv");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+            Map<Integer, Map<Integer, Pair<String, String>>> downloadDataset = datasetModel.getDataset();
+            StringJoiner csvRow = new StringJoiner(",");
 
             try (PrintWriter csvWriter = response.getWriter()) {
                 // Escribir encabezados de columnas
@@ -111,20 +120,27 @@ public class DatasetService {
                 csvWriter.append(csvRow.toString());
                 csvWriter.append("\n");
 
-            // Escribir datos
-            for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
-                for (Pair<String, String> rowData : row.values()) {
-                    csvWriter.append(String.valueOf(rowData.getValue()));
-                    csvWriter.append(",");
+                // Escribir datos
+                for (Map<Integer, Pair<String, String>> row : downloadDataset.values()) {
+                    for (Pair<String, String> rowData : row.values()) {
+                        csvWriter.append(String.valueOf(rowData.getValue()));
+                        csvWriter.append(",");
+                    }
+                    csvWriter.append("\n");
                 }
-                csvWriter.append("\n");
-            }
 
-            csvWriter.flush();
+                csvWriter.flush();
+            }
+            catch (Exception e) {
+                throw new ServerConflict("Error while reading the file");
+            }
+        }
+        else {
+            throw new Forbidden("El user_id enviado es diferente al especificado en el token");
         }
     }
 
-    public  Map<String, List<DatasetModel>> getHistory(long userId, String order, String search, String datasetName) throws Exception {
+    public  Map<String, List<DatasetModel>> getHistory(long userId, String order, String search, String datasetName) throws Forbidden {
         if(new TokenValidator().validate_id_with_token(userId)) {
             ModelMapper modelMapper = new ModelMapper();
             List<DatasetModel> datasets = datasetRepo.findAllByUserId(userId).stream()
@@ -148,11 +164,11 @@ public class DatasetService {
             return history;
         }
         else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
+            throw new Forbidden("El user_id enviado es diferente al especificado en el token");
         }
     }
 
-    public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws Exception {
+    public DatasetModel applyFilter(List<String> filter, List<Boolean> rowsWanted, long datasetId) throws BadRequest, Forbidden, NotFound, ServerConflict {
         DatasetModel datasetModel = getDataset(datasetId);
 
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
@@ -176,12 +192,16 @@ public class DatasetService {
             }
         }
 
+        if (newDataset.isEmpty()) {
+            throw new BadRequest("No marked rows");
+        }
+
         //double eigenEntropy = entropyService.getEigenEntropy(dataset);
         double eigenEntropy = entropyService.calculateEigenEntropy(newDataset, datasetModel.getRowsDenied(), true);
         return saveDataset(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName(), new ArrayList<>());
     }
 
-    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws Exception {
+    public DatasetModel applySampleFilter(long datasetId, String improve, String type, int numInitialRows, int numWantedRows, double sliderValue, List<Boolean> initialRows) throws BadRequest, ServerConflict, Forbidden, NotFound {
         DatasetModel datasetModel = getDataset(datasetId);
         DatasetModel newDataset;
 
@@ -190,19 +210,18 @@ public class DatasetService {
         } else if (type.equals("Elimination Sampling")) {
             newDataset = entropyService.sampleElimination(datasetModel, numWantedRows, improve);
         } else {
-            throw new Exception("Incorrect Sample Filter Type");
+            throw new BadRequest("Incorrect Sample Filter Type");
         }
         return saveDataset(newDataset.getDataset(), newDataset.getEigenEntropy(), newDataset.getUserId(), newDataset.getDatasetName(), datasetModel.getRowsDenied());
     }
 
     //region DataBase
-    private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName, List<Integer> rowsDenied) throws JsonProcessingException {
+    private DatasetModel saveDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, double eigenEntropy, long userId, String datasetName, List<Integer> rowsDenied) throws ServerConflict {
         ModelMapper modelMapper = new ModelMapper();
 
         List<DatasetModel> datasetsVersions = new ArrayList<>();
         datasetRepo.findAllByUserIdAndDatasetName(userId, datasetName).forEach(elementB -> datasetsVersions.add(modelMapper.map(elementB, DatasetModel.class)));
         long version = 0;
-
 
         if (!datasetsVersions.isEmpty()) {
             for (DatasetModel datasetVersion : datasetsVersions) {
@@ -220,9 +239,13 @@ public class DatasetService {
         return datasetModel;
     }
 
-    public DatasetModel getDataset(long datasetId) throws Exception {
+    public DatasetModel getDataset(long datasetId) throws NotFound, Forbidden {
         ModelMapper modelMapper = new ModelMapper();
         DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
+
+        if (datasetModel == null) {
+            throw new NotFound("La versión solicitada no existe.");
+        }
 
         if(new TokenValidator().validate_id_with_token(datasetModel.getUserId())) {
             //DatasetModel datasetModel = modelMapper.map(datasetRepo.findByUserIdAndDatasetNameAndVersion(userId, datasetName, version), DatasetModel.class);
@@ -230,11 +253,11 @@ public class DatasetService {
             return datasetModel;
         }
         else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
+            throw new Forbidden("El user_id enviado es diferente al especificado en el token");
         }
     }
 
-    public void deleteDataset(long datasetId) throws Exception {
+    public void deleteDataset(long datasetId) throws Forbidden {
         ModelMapper modelMapper = new ModelMapper();
         DatasetModel datasetModel = modelMapper.map(datasetRepo.findById(datasetId), DatasetModel.class);
 
@@ -243,7 +266,7 @@ public class DatasetService {
             datasetRepo.delete(modelMapper.map(datasetModel, DatasetEntity.class));
         }
         else {
-            throw new Exception("El user_id enviado es diferente al especificado en el token");
+            throw new Forbidden("El user_id enviado es diferente al especificado en el token");
         }
     }
     //endregion
@@ -259,27 +282,32 @@ public class DatasetService {
                 userDatasets.stream().max(Comparator.comparing(DatasetModel::getDatasetId)).get().getDatasetId() + 1;
     }
 
-    private List<ObjectId> saveDatasetMap (Map<Integer, Map<Integer, Pair<String, String>>> dataset, long datasetId) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String json = objectMapper.writeValueAsString(dataset);
-        byte[] datasetBytes = json.getBytes(StandardCharsets.UTF_8);
+    private List<ObjectId> saveDatasetMap (Map<Integer, Map<Integer, Pair<String, String>>> dataset, long datasetId) throws ServerConflict {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String json = objectMapper.writeValueAsString(dataset);
+            byte[] datasetBytes = json.getBytes(StandardCharsets.UTF_8);
 
-        final int MAX_SIZE = 16 * 1024 * 1024; //16MB
-        int length = datasetBytes.length;
-        int offset = 0;
-        List<ObjectId> fileIds = new ArrayList<>();
+            final int MAX_SIZE = 16 * 1024 * 1024; //16MB
+            int length = datasetBytes.length;
+            int offset = 0;
+            List<ObjectId> fileIds = new ArrayList<>();
 
-        while (offset < length) {
-            int chunkSize = Math.min(length - offset, MAX_SIZE);
-            byte[] chunk = Arrays.copyOfRange(datasetBytes, offset, offset + chunkSize);
+            while (offset < length) {
+                int chunkSize = Math.min(length - offset, MAX_SIZE);
+                byte[] chunk = Arrays.copyOfRange(datasetBytes, offset, offset + chunkSize);
 
-            ObjectId fileId = gridFsTemplate.store(new ByteArrayInputStream(chunk), Long.toString(datasetId) + "-" + fileIds.size());
-            fileIds.add(fileId);
+                ObjectId fileId = gridFsTemplate.store(new ByteArrayInputStream(chunk), Long.toString(datasetId) + "-" + fileIds.size());
+                fileIds.add(fileId);
 
-            offset += chunkSize;
+                offset += chunkSize;
+            }
+
+            return fileIds;
         }
-
-        return fileIds;
+        catch (Exception e) {
+            throw new ServerConflict("Error while saving the file");
+        }
     }
 
     private Map<Integer, Map<Integer, Pair<String, String>>> getDatasetMap (List<ObjectId> fileIds) {

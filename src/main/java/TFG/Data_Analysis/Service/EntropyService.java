@@ -1,6 +1,7 @@
 package TFG.Data_Analysis.Service;
 
-import TFG.Data_Analysis.Helpers.Exception;
+import TFG.Data_Analysis.Helpers.Error.BadRequest;
+import TFG.Data_Analysis.Helpers.Error.ServerConflict;
 import TFG.Data_Analysis.Helpers.Pair;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
 import org.ejml.dense.row.MatrixFeatures_DDRM;
@@ -10,7 +11,6 @@ import org.ejml.simple.SimpleMatrix;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class EntropyService {
@@ -24,14 +24,14 @@ public class EntropyService {
         return calculateEigenEntropy(dataset);
     }*/
 
-    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<Integer> rowsDenied, Boolean filter) throws Exception {
+    public double calculateEigenEntropy(Map<Integer, Map<Integer, Pair<String, String>>> dataset, List<Integer> rowsDenied, Boolean filter) throws ServerConflict {
         SimpleMatrix dataMatrix;
         if (!filter) dataMatrix = new SimpleMatrix(convertToMatrix(dataset, rowsDenied));
         else dataMatrix = new SimpleMatrix(convertToMatrixFilter(dataset));
         dataMatrix = convertToCorrelationMatrix(dataMatrix);
 
         if (!MatrixFeatures_DDRM.isSymmetric(dataMatrix.getDDRM(), 1e-8)) {
-            throw new Exception("La matriz no es simétrica.");
+            throw new ServerConflict("La matriz no es simétrica.");
         }
 
         SwitchingEigenDecomposition_DDRM eigDecomp = (SwitchingEigenDecomposition_DDRM) DecompositionFactory_DDRM.eig(dataMatrix.getNumRows(), true);
@@ -138,12 +138,12 @@ public class EntropyService {
 
     //region Sample
     //Desde un pequeño dataset S de X de numInitialRows --> añadir filas hasta numRowsWanted
-    public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve, double sliderValue) throws Exception {
+    public DatasetModel sampleIncremental(DatasetModel datasetModel, int numInitialRows, int numRowsWanted, List<Boolean> initialRows, String improve, double sliderValue) throws BadRequest, ServerConflict {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         //Map<Integer, Map<Integer, Pair<String, String>>> normDataset = normalizeMap(datasetModel.getDataset());
         Map<Integer, Map<Integer, Pair<String, String>>> normDataset = dataset;
         if (numRowsWanted >= dataset.size() && numInitialRows >= dataset.size()) {
-            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+            throw new BadRequest("Number of wanted rows can't be higher or equal to the current rows");
         }
 
         List<Integer> rowsDenied = datasetModel.getRowsDenied();
@@ -177,7 +177,7 @@ public class EntropyService {
                         auxDataset.remove(numNewRow);
                     }
                 } else {
-                    throw new Exception("Incorrect Sample Filter Type");
+                    throw new BadRequest("Incorrect Sample Filter Type");
                 }
             }
 
@@ -195,12 +195,12 @@ public class EntropyService {
     }
 
     //Dado un dataset X --> quita filas hasta que X tenga numRowsWanted
-    public DatasetModel sampleElimination(DatasetModel datasetModel, int numRowsWanted, String improve) throws Exception {
+    public DatasetModel sampleElimination(DatasetModel datasetModel, int numRowsWanted, String improve) throws BadRequest, ServerConflict {
         Map<Integer, Map<Integer, Pair<String, String>>> dataset = datasetModel.getDataset();
         //Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = normalizeMap(dataset);
         Map<Integer, Map<Integer, Pair<String, String>>> auxDataset = dataset;
         if (numRowsWanted >= dataset.size()) {
-            throw new Exception("Number of wanted rows can't be higher or equal to the current rows");
+            throw new BadRequest("Number of wanted rows can't be higher or equal to the current rows");
         }
 
         List<Integer> rowsDenied = datasetModel.getRowsDenied();
@@ -239,7 +239,7 @@ public class EntropyService {
                     }
                     else auxDataset.put(index, row);
                 } else {
-                    throw new Exception("Incorrect Sample Filter Type");
+                    throw new BadRequest("Incorrect Sample Filter Type");
                 }
             }
         }
@@ -254,7 +254,7 @@ public class EntropyService {
         return new DatasetModel(newDataset, eigenEntropy, datasetModel.getUserId(), datasetModel.getDatasetName());
     }
 
-    private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int numInitialRows, List<Boolean> initialRows) throws Exception {
+    private Map<Integer, Map<Integer, Pair<String, String>>> initialReducedDataset(Map<Integer, Map<Integer, Pair<String, String>>> dataset, int numInitialRows, List<Boolean> initialRows) throws BadRequest {
         Random random = new Random();
         Map<Integer, Map<Integer, Pair<String, String>>> newDataset = new HashMap<>();
 
@@ -276,7 +276,7 @@ public class EntropyService {
         }
 
         if (newDataset.size() > numInitialRows) {
-            throw new Exception("Incorrect number of marked rows");
+            throw new BadRequest("Incorrect number of marked rows");
         }
 
         while (numRow <= numInitialRows) {
