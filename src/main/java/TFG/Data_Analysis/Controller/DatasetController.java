@@ -1,6 +1,10 @@
 package TFG.Data_Analysis.Controller;
 
 import TFG.Data_Analysis.Controller.Dto.DatasetDto;
+import TFG.Data_Analysis.Helpers.Error.BadRequest;
+import TFG.Data_Analysis.Helpers.Error.Forbidden;
+import TFG.Data_Analysis.Helpers.Error.NotFound;
+import TFG.Data_Analysis.Helpers.Error.ServerConflict;
 import TFG.Data_Analysis.Helpers.FilterListDto;
 import TFG.Data_Analysis.Service.DatasetService;
 import TFG.Data_Analysis.Service.Model.DatasetModel;
@@ -25,14 +29,14 @@ public class DatasetController {
 
     //region Post Methods
     @PostMapping(path = "userId/{userId}/rows/{rowsDenied}")
-    public DatasetDto fileReaderCSV(@RequestBody MultipartFile file, @PathVariable("userId") long userId, @PathVariable("rowsDenied") String rowsDenied) throws Exception {
+    public DatasetDto fileReaderCSV(@RequestBody MultipartFile file, @PathVariable("userId") long userId, @PathVariable("rowsDenied") String rowsDenied) throws BadRequest, Forbidden, ServerConflict {
         ModelMapper modelMapper = new ModelMapper();
 
         return modelMapper.map(datasetService.fileReader(file, userId, rowsDenied), DatasetDto.class);
     }
 
     @PostMapping(path = "/filter/datasetId/{datasetId}")
-    public DatasetDto applyFilter(@RequestBody FilterListDto filterListDto, @PathVariable("datasetId") long datasetId) throws Exception {
+    public DatasetDto applyFilter(@RequestBody FilterListDto filterListDto, @PathVariable("datasetId") long datasetId) throws BadRequest, Forbidden, NotFound, ServerConflict {
         ModelMapper modelMapper = new ModelMapper();
 
         return modelMapper.map(datasetService.applyFilter(filterListDto.getTitlesFilter(), filterListDto.getRowsWanted(), datasetId), DatasetDto.class);
@@ -41,21 +45,21 @@ public class DatasetController {
 
     //region Get Methods
     @GetMapping(path = "/datasetId/{datasetId}")
-    public DatasetDto getDataset(@PathVariable("datasetId") long datasetId) throws Exception {
+    public DatasetDto getDataset(@PathVariable("datasetId") long datasetId) throws Forbidden, NotFound {
         ModelMapper modelMapper = new ModelMapper();
 
         return modelMapper.map(datasetService.getDataset(datasetId), DatasetDto.class);
     }
 
     @GetMapping(path = "/download/datasetId/{datasetId}")
-    public void downloadFile(@PathVariable("datasetId") long datasetId, HttpServletResponse response) throws Exception {
+    public void downloadFile(@PathVariable("datasetId") long datasetId, HttpServletResponse response) throws Forbidden, NotFound, ServerConflict {
         datasetService.downloadFile(datasetId, response);
     }
 
     @GetMapping(path = "/historial/userId/{userId}")
     public Map<String, List<DatasetDto>> getHistory(@PathVariable("userId") long userId, @RequestParam(required = false, value = "orderBy") String order,
                                                     @RequestParam(required = false, value = "search") String search,
-                                                    @RequestParam(required = false, value = "datasetName") String datasetName) throws Exception {
+                                                    @RequestParam(required = false, value = "datasetName") String datasetName) throws Forbidden {
         ModelMapper modelMapper = new ModelMapper();
         Map<String, List<DatasetDto>> history = datasetService.getHistory(userId, order, search, datasetName).entrySet().stream()
             .collect(Collectors.toMap(
@@ -69,7 +73,10 @@ public class DatasetController {
     }
 
     @PutMapping(path = "/filter/datasetId/{datasetId}/improve/{improve}/type/{type}")
-    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve, @PathVariable("type") String type, @RequestParam(value = "numInitialRows") int numInitialRows, @RequestParam(value = "numWantedRows") int numWantedRows, @RequestParam(value = "sliderValue") double sliderValue, @RequestBody List<Boolean> initialRows) throws Exception {
+    public DatasetDto applySampleFilter(@PathVariable("datasetId") long datasetId, @PathVariable("improve") String improve,
+                                        @PathVariable("type") String type, @RequestParam(value = "numInitialRows") int numInitialRows,
+                                        @RequestParam(value = "numWantedRows") int numWantedRows, @RequestParam(value = "sliderValue") double sliderValue,
+                                        @RequestBody List<Boolean> initialRows) throws BadRequest, Forbidden, ServerConflict, NotFound {
         ModelMapper modelMapper = new ModelMapper();
 
         return  modelMapper.map(datasetService.applySampleFilter(datasetId, improve, type, numInitialRows, numWantedRows, sliderValue, initialRows), DatasetDto.class);
@@ -78,7 +85,7 @@ public class DatasetController {
     
     //region Delete Methods
     @DeleteMapping(path = "/datasetId/{datasetId}")
-    public void deleteDataset(@PathVariable("datasetId") long datasetId) throws Exception {
+    public void deleteDataset(@PathVariable("datasetId") long datasetId) throws Forbidden {
         datasetService.deleteDataset(datasetId);
     }
     //endregion
