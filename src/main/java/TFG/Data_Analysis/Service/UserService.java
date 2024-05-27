@@ -95,7 +95,7 @@ public class UserService {
                 /* Comprobación validez número de teléfono */
                 String tlf = user.getPhone();
                 if(tlf != null && !validatePhoneNumber(tlf)) {
-                    throw new BadRequest("El número de teléfono no es válido.");
+                    throw new BadRequest("El número de teléfono no es válido. Formatp requerido: +34xxxxxxxxx");
                 }
             }
             return modelMapper.map(userRepo.save(modelMapper.map(user, UserEntity.class)), UserModel.class);
