@@ -1,2 +1,1 @@
-java-17
 openjdk-17
