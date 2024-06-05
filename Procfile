@@ -1,1 +1,1 @@
-web: java -jar /target/Data_Analysis-0.0.1-SNAPSHOT.jar
+web: java -jar Data_Analysis-0.0.1-SNAPSHOT.jar
