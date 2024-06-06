@@ -1,1 +1,1 @@
-web: java -Dserver.port=$PORT -jar target/mi-aplicacion.jar
+web: java -Dserver.port=$PORT -jar target/Data_Analysis-0.0.1-SNAPSHOT.jar
